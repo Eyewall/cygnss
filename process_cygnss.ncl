@@ -18,12 +18,40 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 ;---------------------------------------------
 
 trakfile = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
+cygdir   = "/jm13/pduran/cygnss/2017/"
+cygtimefile = "/jm13/pduran/cygnss/2017/cygtimes.txt"
 
 ;--------------------------------------;
 ;GET LIST OF AVAILABLE CYGNSS FILES AND;
-;THE TIMES OF THE OBSERVATIONS.        ;
+;THE TIMES OF THE OBSERVATIONS, AND    ;
+;PRINT TO OUTPUT FILE.                 ;
+;THIS ONLY NEEDS TO BE DONE ONCE FOR   ;
+;EVERY CYGNSS DIRECTORY.               ;
 ;--------------------------------------;
-
+cygfilelist = systemfunc("ls "+cygdir+"*nc")
+ncygfiles = dimsizes(cygfilelist)
+mintimes = new(ncygfiles,"integer")
+maxtimes = new(ncygfiles,"integer")
+timeunits= "seconds since 2016-1-1 00:00:00"
+do i=0,ncygfiles-1
+   unixi = i + 1
+   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
+   cygfile   = addfile(cygfilelist(i),"r")
+   cygtimes := cygfile->sample_time
+   ;Convert observation times of each file to a common unit
+   cygtimes_convert := round(cd_convert(cygtimes,timeunits),3)
+   mintimes(i) = min(cygtimes_convert)
+   maxtimes(i) = max(cygtimes_convert)
+end do
+;Write to output file
+header = [/"Time units: '"+timeunits+"'"/]
+header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
+outlist = [/cygfilelist,mintimes,maxtimes/]
+write_table(cygtimefile,"w",header,"%s")
+write_table(cygtimefile,"a",header2,"%s")
+write_table(cygtimefile,"a",outlist,"%s%09i%09i")
+print( "Output written to "+cygtimefile)
+exit
 
 ;--------------------------;
 ;GET BEST TRACK INFORMATION;
