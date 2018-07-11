@@ -17,7 +17,7 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 ; within a user-defined radius of the storm center.
 ;---------------------------------------------
 
-trakfile = "/jm13/pduran/best-tracks/hurdat2-1851-2016-041117.txt"
+trakfile = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
 
 ;--------------------------;
 ;GET BEST TRACK INFORMATION;
@@ -42,8 +42,7 @@ do i=0,nstorms-1
    else
       system("sed -n '/"+stormid+"/,$p' "+trakfile+" | sed '/"+stormid+"/d' > currentstorm.tmp")
    end if
-   ;Read best-track data for the current storm (after deleting comma delimeters)
-;   system("sed -i 's/,//g' currentstorm.tmp")
+   ;Read best-track data for the current storm using comma delimeters
    yyyy    := toint(systemfunc("awk -F',' '{print $1}' currentstorm.tmp | cut -c 1-4"))
    mm      := toint(systemfunc("awk -F',' '{print $1}' currentstorm.tmp | cut -c 5-6"))
    dd      := toint(systemfunc("awk -F',' '{print $1}' currentstorm.tmp | cut -c 7-8"))
@@ -59,5 +58,22 @@ do i=0,nstorms-1
    ;Multiply any south latitudes or east longitudes by -1
    lat := where(norslat.eq."S",lat*-1,lat)
    lon := where(eorwlon.eq."E",lon*-1,lon)
-   print( yyyy)
+   ;Get intensity estimates
+   vmax    := tofloat(systemfunc("awk -F ',' '{print $7}' currentstorm.tmp"))
+   pmin    := tofloat(systemfunc("awk -F ',' '{print $8}' currentstorm.tmp"))
+   print( vmax)
+   print( pmin)
+   ;Get wind radii
+   r34ne   := tofloat(systemfunc("awk -F ',' '{print $9}' currentstorm.tmp"))
+   r34se   := tofloat(systemfunc("awk -F ',' '{print $10}' currentstorm.tmp"))
+   r34sw   := tofloat(systemfunc("awk -F ',' '{print $11}' currentstorm.tmp"))
+   r34nw   := tofloat(systemfunc("awk -F ',' '{print $12}' currentstorm.tmp"))
+   r50ne   := tofloat(systemfunc("awk -F ',' '{print $13}' currentstorm.tmp"))
+   r50se   := tofloat(systemfunc("awk -F ',' '{print $14}' currentstorm.tmp"))
+   r50sw   := tofloat(systemfunc("awk -F ',' '{print $15}' currentstorm.tmp"))
+   r50nw   := tofloat(systemfunc("awk -F ',' '{print $16}' currentstorm.tmp"))
+   r64ne   := tofloat(systemfunc("awk -F ',' '{print $17}' currentstorm.tmp"))
+   r64se   := tofloat(systemfunc("awk -F ',' '{print $18}' currentstorm.tmp"))
+   r64sw   := tofloat(systemfunc("awk -F ',' '{print $19}' currentstorm.tmp"))
+   r64nw   := tofloat(systemfunc("awk -F ',' '{print $20}' currentstorm.tmp"))
 end do
