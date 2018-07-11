@@ -19,12 +19,18 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 
 trakfile = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
 
+;--------------------------------------;
+;GET LIST OF AVAILABLE CYGNSS FILES AND;
+;THE TIMES OF THE OBSERVATIONS.        ;
+;--------------------------------------;
+
+
 ;--------------------------;
 ;GET BEST TRACK INFORMATION;
 ;--------------------------;
 ;Get list of all storms in the file by finding all
 ;lines with only three columns. Then get number of
-;storms in the file.
+;storms in the file, storm IDs, and storm names.
 system("awk 'NF==3{print}{}' "+trakfile+" > stormlist.tmp")
 nstorms    = toint(systemfunc("wc stormlist.tmp | awk '{print $1}'"))
 stormids   = systemfunc("awk '{print $1}' stormlist.tmp | sed 's/,//g'")
@@ -61,8 +67,6 @@ do i=0,nstorms-1
    ;Get intensity estimates
    vmax    := tofloat(systemfunc("awk -F ',' '{print $7}' currentstorm.tmp"))
    pmin    := tofloat(systemfunc("awk -F ',' '{print $8}' currentstorm.tmp"))
-   print( vmax)
-   print( pmin)
    ;Get wind radii
    r34ne   := tofloat(systemfunc("awk -F ',' '{print $9}' currentstorm.tmp"))
    r34se   := tofloat(systemfunc("awk -F ',' '{print $10}' currentstorm.tmp"))
@@ -76,4 +80,9 @@ do i=0,nstorms-1
    r64se   := tofloat(systemfunc("awk -F ',' '{print $18}' currentstorm.tmp"))
    r64sw   := tofloat(systemfunc("awk -F ',' '{print $19}' currentstorm.tmp"))
    r64nw   := tofloat(systemfunc("awk -F ',' '{print $20}' currentstorm.tmp"))
+
+   ;---------------------------------------;
+   ;CONVERT DATES/TIMES TO A REFERENCE TIME;
+   ;---------------------------------------;
+   trakcygtime := cd_inv_calendar(yyyy,mm,dd,hour,minu,conform(yyyy,0,-1),"seconds since 2016-1-1 00:00:00",0)
 end do
