@@ -17,9 +17,10 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 ; within a user-defined radius of the storm center.
 ;---------------------------------------------
 
-trakfile = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
-cygdir   = "/jm13/pduran/cygnss/2017/"
+trakfile    = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
+cygdir      = "/jm13/pduran/cygnss/2017/"
 cygtimefile = "/jm13/pduran/cygnss/2017/cygtimes.txt"
+stormdir    = "/jm13/pduran/cygnss/2017/stormfiles/"
 searchradius= 300  ;Units km
 ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
 
@@ -123,6 +124,7 @@ do i=0,nstorms-1
    ;TRACK TO A REFERENCE TIME    ;
    ;-----------------------------;
    trakcygtime := cd_inv_calendar(yyyy,mm,dd,hour,minu,conform(yyyy,0,-1),"seconds since 2016-1-1 00:00:00",0)
+   trakcygtime!0 = "tracktime"
 
    ;-----------------------------------------;
    ;LOOP THROUGH ALL BEST-TRACK TIMES FOR THE;
@@ -132,7 +134,12 @@ do i=0,nstorms-1
    ;POINTS THAT FALL WITHIN THE SPECIFIED    ;
    ;RADIUS AND PLOT THEM.                    ;
    ;-----------------------------------------;
+   ;Initialize arrays for this storm
    ntimes = dimsizes(trakcygtime)
+   v     := new((/ntimes,10000/),"float") ;ntimes here is # of times in best-track
+   lats  := v                             ;file for this storm.
+   lons  := v
+   timecount = 0 ;Count the number of best-track times for which the are CYGNSS obs
    do j=0,ntimes-1
       unixj = j + 1
       print( "Finding CYGNSS retrievals for entry "+unixj+" of "+ntimes+" for "+stormnames(i)+"   "+systemfunc("date"))
@@ -155,6 +162,7 @@ do i=0,nstorms-1
       cygfilename = cygfilenames(cygfileind)
       ;Read variables from CYGNSS file
       cygfile = addfile(cygfilename,"r")
+      cygvers = cygfile@title
       prn    := cygfile->prn_code    ;PRN code
       time   := cygfile->sample_time ;Mean time of DDMs used to derive wind speed
       cyglat := cygfile->lat         ;Mean of spec point lats used to derive wind
@@ -176,5 +184,57 @@ do i=0,nstorms-1
       if(all(ismissing(indices)))then
          continue
       end if
+      timecount = timecount + 1 ;We have obs for this time!
+      ;Get wind speeds, lats, lons
+      ninds = dimsizes(indices)
+      v   (j,:ninds-1) = wind_speed_yslf_nbrcs(indices) 
+      lats(j,:ninds-1) = cyglat(indices)
+      lons(j,:ninds-1) = cyglon(indices)
    end do
+   ;--------------------------------------------------;
+   ;WRITE NETCDF FILE FOR THIS STORM AND SEARCH RADIUS;
+   ;--------------------------------------------------;
+   if(timecount.eq.0)   ;If there aren't any CYGNSS obs for this storm,
+      continue          ;skip writing output file.
+   end if
+   ncoutfile = stormdir+stormnames(i)+"-searchrad"+searchradius+"km.nc"
+   system("rm "+ncoutfile)
+   fout = addfile(ncoutfile,"c")
+   print( "Writing output file for "+stormnames(i)+" to "+ncoutfile)
+   ;Copy metadata from CYGNSS file vars to output vars
+;   v@long_name    = wind_speed_yslf_nbrcs@long_name
+;   v@units        = wind_speed_yslf_nbrcs@units
+;   v@comment      = wind_speed_yslf_nbrcs@comment
+;   lats@long_name = wind_speed_yslf_nbrcs@long_name
+;   lats@units     = wind_speed_yslf_nbrcs@units
+;   lats@comment   = wind_speed_yslf_nbrcs@comment
+;   lons@long_name = wind_speed_yslf_nbrcs@long_name
+;   lons@units     = wind_speed_yslf_nbrcs@units
+;   lons@comment   = wind_speed_yslf_nbrcs@comment
+;   printVarSummary( v)
+   ;Define global attributes
+   fileatts = True
+   fileatts@CYGNSSversion= cygvers
+   fileatts@searchradius = searchradius+" km"
+   fileatts@trackfile = trakfile
+   fileatts@ignoreBlockIIF = ignoreblockIIF
+   fileattdef(fout,fileatts)
+   ;Define variable attributes
+   dimNames = (/"tracktime","obs"/)
+   print( ntimes)
+   dimSizes = (/ntimes,10000/)
+   dimUnlim = (/False,False/)
+   var_names = (/"v","lat","lon"/)
+   var_types = (/"float","float","float"/)
+   filedimdef(fout,dimNames,dimSizes,dimUnlim)
+   filevardef(fout,"tracktime",typeof(traktime),getvardims(traktime))
+   filevardef(fout,var_names,var_types,dimNames)
+   filevarattdef(fout,"v",v)
+   filevarattdef(fout,"lat",lats)
+   filevarattdef(fout,"lon",lons)
+   ;Write variables to netCDF file
+   fout->tracktime = (/traktime/)
+   fout->v         = (/v/)
+   fout->lat       = (/lats/)
+   fout->lon       = (/lons/)
 end do
