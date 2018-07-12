@@ -23,6 +23,7 @@ cygtimefile = "/jm13/pduran/cygnss/2017/cygtimes.txt"
 stormdir    = "/jm13/pduran/cygnss/2017/stormfiles/"
 searchradius= 300  ;Units km
 ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
+timeunits= "seconds since 2016-1-1 00:00:00"
 
 ;--------------------------------------;
 ;GET LIST OF AVAILABLE CYGNSS FILES AND;
@@ -35,7 +36,6 @@ ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
 ;ncygfiles = dimsizes(cygfilelist)
 ;mintimes = new(ncygfiles,"integer")
 ;maxtimes = new(ncygfiles,"integer")
-;timeunits= "seconds since 2016-1-1 00:00:00"
 ;do i=0,ncygfiles-1
 ;   unixi = i + 1
 ;   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
@@ -76,7 +76,7 @@ stormnames = systemfunc("awk '{print $2}' stormlist.tmp | sed 's/,//g'")
 print( stormnames)
 
 ;Loop through all storms
-do i=0,nstorms-1
+do i=1,nstorms-1
    stormid   = stormids(i)
    stormname = stormnames(i)
    ;Get lines for the current storm by printing all lines between
@@ -123,9 +123,9 @@ do i=0,nstorms-1
    ;CONVERT DATES/TIMES FROM BEST; 
    ;TRACK TO A REFERENCE TIME    ;
    ;-----------------------------;
-   trakcygtime := cd_inv_calendar(yyyy,mm,dd,hour,minu,conform(yyyy,0,-1),"seconds since 2016-1-1 00:00:00",0)
+   trakcygtime := cd_inv_calendar(yyyy,mm,dd,hour,minu,conform(yyyy,0,-1),timeunits,0)
+   trakcygtime@long_name = "Time of the best-track entry"
    trakcygtime!0 = "tracktime"
-
    ;-----------------------------------------;
    ;LOOP THROUGH ALL BEST-TRACK TIMES FOR THE;
    ;CURRENT STORM AND FIND CYGNSS FILE THAT  ;
@@ -136,8 +136,9 @@ do i=0,nstorms-1
    ;-----------------------------------------;
    ;Initialize arrays for this storm
    ntimes = dimsizes(trakcygtime)
-   v     := new((/ntimes,10000/),"float") ;ntimes here is # of times in best-track
-   lats  := v                             ;file for this storm.
+   time  := new(10000,"double")            ;ntimes here is # of times in best-track
+   v     := new((/ntimes,10000/),"float")  ;file for this strom.
+   lats  := v
    lons  := v
    timecount = 0 ;Count the number of best-track times for which the are CYGNSS obs
    do j=0,ntimes-1
@@ -164,7 +165,7 @@ do i=0,nstorms-1
       cygfile = addfile(cygfilename,"r")
       cygvers = cygfile@title
       prn    := cygfile->prn_code    ;PRN code
-      time   := cygfile->sample_time ;Mean time of DDMs used to derive wind speed
+      cygtime:= cygfile->sample_time ;Mean time of DDMs used to derive wind speed
       cyglat := cygfile->lat         ;Mean of spec point lats used to derive wind
       cyglon := cygfile->lon         ;Mean of spec point lons used to derive wind
       wind_speed_yslf_nbrcs := cygfile->yslf_nbrcs_wind_speed ;Units m/s
@@ -185,11 +186,14 @@ do i=0,nstorms-1
          continue
       end if
       timecount = timecount + 1 ;We have obs for this time!
-      ;Get wind speeds, lats, lons
+      ;Get time, wind speeds, lats, lons
       ninds = dimsizes(indices)
+      time(:ninds-1) = cd_convert(cygtime(indices),timeunits)
       v   (j,:ninds-1) = wind_speed_yslf_nbrcs(indices) 
       lats(j,:ninds-1) = cyglat(indices)
       lons(j,:ninds-1) = cyglon(indices)
+
+      time@long_name = "Time of CYGNSS retrieval"
    end do
    ;--------------------------------------------------;
    ;WRITE NETCDF FILE FOR THIS STORM AND SEARCH RADIUS;
@@ -201,17 +205,10 @@ do i=0,nstorms-1
    system("rm "+ncoutfile)
    fout = addfile(ncoutfile,"c")
    print( "Writing output file for "+stormnames(i)+" to "+ncoutfile)
-   ;Copy metadata from CYGNSS file vars to output vars
-;   v@long_name    = wind_speed_yslf_nbrcs@long_name
-;   v@units        = wind_speed_yslf_nbrcs@units
-;   v@comment      = wind_speed_yslf_nbrcs@comment
-;   lats@long_name = wind_speed_yslf_nbrcs@long_name
-;   lats@units     = wind_speed_yslf_nbrcs@units
-;   lats@comment   = wind_speed_yslf_nbrcs@comment
-;   lons@long_name = wind_speed_yslf_nbrcs@long_name
-;   lons@units     = wind_speed_yslf_nbrcs@units
-;   lons@comment   = wind_speed_yslf_nbrcs@comment
-;   printVarSummary( v)
+   ;Define coordinate variables
+   time!0 = "cygtime"
+   v!0    = "track time"
+   v!1    = "CYGNSS obs time"
    ;Define global attributes
    fileatts = True
    fileatts@CYGNSSversion= cygvers
@@ -220,20 +217,23 @@ do i=0,nstorms-1
    fileatts@ignoreBlockIIF = ignoreblockIIF
    fileattdef(fout,fileatts)
    ;Define variable attributes
-   dimNames = (/"tracktime","obs"/)
-   print( ntimes)
+   dimNames = (/"tracktime","cygtime"/)
    dimSizes = (/ntimes,10000/)
    dimUnlim = (/False,False/)
    var_names = (/"v","lat","lon"/)
    var_types = (/"float","float","float"/)
    filedimdef(fout,dimNames,dimSizes,dimUnlim)
-   filevardef(fout,"tracktime",typeof(traktime),getvardims(traktime))
+   filevardef(fout,"tracktime",typeof(trakcygtime),getvardims(trakcygtime))
+   filevardef(fout,"cygtime",typeof(time),getvardims(time))
    filevardef(fout,var_names,var_types,dimNames)
+   filevarattdef(fout,"tracktime",trakcygtime)
+   filevarattdef(fout,"cygtime",time)
    filevarattdef(fout,"v",v)
    filevarattdef(fout,"lat",lats)
    filevarattdef(fout,"lon",lons)
    ;Write variables to netCDF file
    fout->tracktime = (/traktime/)
+   fout->cygtime   = (/time/)
    fout->v         = (/v/)
    fout->lat       = (/lats/)
    fout->lon       = (/lons/)
