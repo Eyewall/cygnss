@@ -20,6 +20,8 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 trakfile = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
 cygdir   = "/jm13/pduran/cygnss/2017/"
 cygtimefile = "/jm13/pduran/cygnss/2017/cygtimes.txt"
+searchradius= 300  ;Units km
+ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
 
 ;--------------------------------------;
 ;GET LIST OF AVAILABLE CYGNSS FILES AND;
@@ -28,30 +30,37 @@ cygtimefile = "/jm13/pduran/cygnss/2017/cygtimes.txt"
 ;THIS ONLY NEEDS TO BE DONE ONCE FOR   ;
 ;EVERY CYGNSS DIRECTORY.               ;
 ;--------------------------------------;
-cygfilelist = systemfunc("ls "+cygdir+"*nc")
-ncygfiles = dimsizes(cygfilelist)
-mintimes = new(ncygfiles,"integer")
-maxtimes = new(ncygfiles,"integer")
-timeunits= "seconds since 2016-1-1 00:00:00"
-do i=0,ncygfiles-1
-   unixi = i + 1
-   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
-   cygfile   = addfile(cygfilelist(i),"r")
-   cygtimes := cygfile->sample_time
-   ;Convert observation times of each file to a common unit
-   cygtimes_convert := round(cd_convert(cygtimes,timeunits),3)
-   mintimes(i) = min(cygtimes_convert)
-   maxtimes(i) = max(cygtimes_convert)
-end do
-;Write to output file
-header = [/"Time units: '"+timeunits+"'"/]
-header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
-outlist = [/cygfilelist,mintimes,maxtimes/]
-write_table(cygtimefile,"w",header,"%s")
-write_table(cygtimefile,"a",header2,"%s")
-write_table(cygtimefile,"a",outlist,"%s%09i%09i")
-print( "Output written to "+cygtimefile)
-exit
+;cygfilelist = systemfunc("ls "+cygdir+"*nc")
+;ncygfiles = dimsizes(cygfilelist)
+;mintimes = new(ncygfiles,"integer")
+;maxtimes = new(ncygfiles,"integer")
+;timeunits= "seconds since 2016-1-1 00:00:00"
+;do i=0,ncygfiles-1
+;   unixi = i + 1
+;   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
+;   cygfile   = addfile(cygfilelist(i),"r")
+;   cygtimes := cygfile->sample_time
+;   ;Convert observation times of each file to a common unit
+;   cygtimes_convert := round(cd_convert(cygtimes,timeunits),3)
+;   mintimes(i) = min(cygtimes_convert)
+;   maxtimes(i) = max(cygtimes_convert)
+;end do
+;;Write to output file
+;header = [/"Time units: '"+timeunits+"'"/]
+;header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
+;outlist = [/cygfilelist,mintimes,maxtimes/]
+;write_table(cygtimefile,"w",header,"%s")
+;write_table(cygtimefile,"a",header2,"%s")
+;write_table(cygtimefile,"a",outlist,"%s%09i%09i")
+;print( "Output written to "+cygtimefile)
+;exit
+
+;------------------------------------------------;
+;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;
+;------------------------------------------------;
+cygfilenames = systemfunc("cat "+cygtimefile+" | sed '1,2d' | awk '{print $1}'")
+cygmintimes  = toint(systemfunc("cat "+cygtimefile+" | sed '1,2d' | awk '{print $2}'"))
+cygmaxtimes  = toint(systemfunc("cat "+cygtimefile+" | sed '1,2d' | awk '{print $3}'"))
 
 ;--------------------------;
 ;GET BEST TRACK INFORMATION;
@@ -109,8 +118,63 @@ do i=0,nstorms-1
    r64sw   := tofloat(systemfunc("awk -F ',' '{print $19}' currentstorm.tmp"))
    r64nw   := tofloat(systemfunc("awk -F ',' '{print $20}' currentstorm.tmp"))
 
-   ;---------------------------------------;
-   ;CONVERT DATES/TIMES TO A REFERENCE TIME;
-   ;---------------------------------------;
+   ;-----------------------------;
+   ;CONVERT DATES/TIMES FROM BEST; 
+   ;TRACK TO A REFERENCE TIME    ;
+   ;-----------------------------;
    trakcygtime := cd_inv_calendar(yyyy,mm,dd,hour,minu,conform(yyyy,0,-1),"seconds since 2016-1-1 00:00:00",0)
+
+   ;-----------------------------------------;
+   ;LOOP THROUGH ALL BEST-TRACK TIMES FOR THE;
+   ;CURRENT STORM AND FIND CYGNSS FILE THAT  ;
+   ;CORRESPONDS TO EACH TIME.                ;
+   ;THEN READ THE FILE AND FIND ANY SPECULAR ;
+   ;POINTS THAT FALL WITHIN THE SPECIFIED    ;
+   ;RADIUS AND PLOT THEM.                    ;
+   ;-----------------------------------------;
+   ntimes = dimsizes(trakcygtime)
+   do j=0,ntimes-1
+      unixj = j + 1
+      print( "Finding CYGNSS retrievals for entry "+unixj+" of "+ntimes+" for "+stormnames(i)+"   "+systemfunc("date"))
+      ;Find the CYGNSS file that contains observations at
+      ;the time of this best-track entry. This file can
+      ;be identified by finding the file for which the
+      ;maximum time minus the best-track time is positive
+      ;and the minimum time minus the b-t time is negative.
+      traktime  = trakcygtime(j)
+      timediffsmin := cygmintimes - traktime
+      timediffsmax := cygmaxtimes - traktime
+      cygfileind = ind(timediffsmax.ge.0.and.timediffsmin.le.0)
+      ;If there is a CYGNSS outage, there might not be data
+      ;at the best-track time. Check for this:
+      if(ismissing(cygfileind))then
+         yyyymmddhh = tostring(yyyy)+tostring(mm)+tostring(dd)+tostring(hour)
+         print( "No CYGNSS observations available at "+yyyymmddhh)
+         continue
+      end if
+      cygfilename = cygfilenames(cygfileind)
+      ;Read variables from CYGNSS file
+      cygfile = addfile(cygfilename,"r")
+      prn    := cygfile->prn_code    ;PRN code
+      time   := cygfile->sample_time ;Mean time of DDMs used to derive wind speed
+      cyglat := cygfile->lat         ;Mean of spec point lats used to derive wind
+      cyglon := cygfile->lon         ;Mean of spec point lons used to derive wind
+      wind_speed_yslf_nbrcs := cygfile->yslf_nbrcs_wind_speed ;Units m/s
+      yslf_nbrcs_uncertainty:= cygfile->yslf_nbrcs_wind_speed_uncertainty ;Units m/s
+      if(ignoreblockIIF)then  ;Ignore retrievals that use BlockIIF satellites
+         print( "Ignoring retrievals computed using Block IIF satellites.")
+         toignore = (/1,3,6,8,9,10,24,25,26,27,30,32/) ;PRN codes for BlockIIF sats
+         do k=0,dimsizes(toignore)-1
+            cyglat = where(prn.eq.toignore(k),cyglat@_FillValue,cyglat)   
+         end do
+      end if
+      ;Compute distances between storm center and all retrieval locations
+      dist := gc_latlon(lat(j),lon(j),cyglat,cyglon,2,4)
+      ;Get indices for retrievals where distance is within search radius
+      indices := ind(dist.lt.searchradius)
+      ;If there aren't any for this best-track entry, skip to end of loop
+      if(all(ismissing(indices)))then
+         continue
+      end if
+   end do
 end do
