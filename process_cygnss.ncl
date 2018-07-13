@@ -177,6 +177,9 @@ do i=0,nstorms-1
          toignore = (/1,3,6,8,9,10,24,25,26,27,30,32/) ;PRN codes for BlockIIF sats
          do k=0,dimsizes(toignore)-1
             cyglat = where(prn.eq.toignore(k),cyglat@_FillValue,cyglat)   
+            cyglon = where(prn.eq.toignore(k),cyglon@_FillValue,cyglon)   
+            wind_speed_yslf_nbrcs = where(prn.eq.toignore(k),wind_speed_yslf_nbrcs@_FillValue,wind_speed_yslf_nbrcs)   
+            yslf_nbrcs_uncertainty = where(prn.eq.toignore(k),yslf_nbrcs_uncertainty@_FillValue,yslf_nbrcs_uncertainty)   
          end do
       end if
       ;Compute distances between storm center and all retrieval locations
