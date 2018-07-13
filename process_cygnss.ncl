@@ -17,10 +17,11 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 ; within a user-defined radius of the storm center.
 ;---------------------------------------------
 
-trakfile    = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
-cygdir      = "/jm13/pduran/cygnss/2017/"
-cygtimefile = "/jm13/pduran/cygnss/2017/cygtimes.txt"
-stormdir    = "/jm13/pduran/cygnss/2017/stormfiles/"
+datalevel   = 1
+trakfile    = "/jm13/pduran/best-tracks/hurdat2-2018.txt"
+cygdir      = "/jm13/pduran/cygnss/2018/level"+datalevel+"/"
+cygtimefile = "/jm13/pduran/cygnss/2018/cygtimes.txt"
+stormdir    = "/jm13/pduran/cygnss/2018/stormfiles/"
 searchradius= 300  ;Units km
 ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
 
@@ -41,13 +42,18 @@ ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
 ;   unixi = i + 1
 ;   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
 ;   cygfile   = addfile(cygfilelist(i),"r")
-;   cygtimes := cygfile->sample_time
+;   if(datalevel.eq.1)then
+;      cygtimes := cygfile->ddm_timestamp_utc
+;   else if(datalevel.eq.2)then
+;      cygtimes := cygfile->sample_time
+;   end if
+;   end if
 ;   ;Convert observation times of each file to a common unit
 ;   cygtimes_convert := round(cd_convert(cygtimes,timeunits),3)
 ;   mintimes(i) = min(cygtimes_convert)
 ;   maxtimes(i) = max(cygtimes_convert)
 ;end do
-;Write to output file
+;;Write to output file
 ;header = [/"Time units: '"+timeunits+"'"/]
 ;header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
 ;outlist = [/cygfilelist,mintimes,maxtimes/]
