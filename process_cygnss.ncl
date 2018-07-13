@@ -23,7 +23,7 @@ cygtimefile = "/jm13/pduran/cygnss/2017/cygtimes.txt"
 stormdir    = "/jm13/pduran/cygnss/2017/stormfiles/"
 searchradius= 300  ;Units km
 ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
-timeunits= "seconds since 2016-1-1 00:00:00"
+
 
 ;--------------------------------------;
 ;GET LIST OF AVAILABLE CYGNSS FILES AND;
@@ -32,6 +32,7 @@ timeunits= "seconds since 2016-1-1 00:00:00"
 ;THIS ONLY NEEDS TO BE DONE ONCE FOR   ;
 ;EVERY CYGNSS DIRECTORY.               ;
 ;--------------------------------------;
+;timeunits= "seconds since 2016-1-1 00:00:00"
 ;cygfilelist = systemfunc("ls "+cygdir+"*nc")
 ;ncygfiles = dimsizes(cygfilelist)
 ;mintimes = new(ncygfiles,"integer")
@@ -47,18 +48,19 @@ timeunits= "seconds since 2016-1-1 00:00:00"
 ;   maxtimes(i) = max(cygtimes_convert)
 ;end do
 ;Write to output file
-header = [/"Time units: '"+timeunits+"'"/]
-header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
-outlist = [/cygfilelist,mintimes,maxtimes/]
-write_table(cygtimefile,"w",header,"%s")
-write_table(cygtimefile,"a",header2,"%s")
-write_table(cygtimefile,"a",outlist,"%s%09i%09i")
-print( "Output written to "+cygtimefile)
-exit
+;header = [/"Time units: '"+timeunits+"'"/]
+;header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
+;outlist = [/cygfilelist,mintimes,maxtimes/]
+;write_table(cygtimefile,"w",header,"%s")
+;write_table(cygtimefile,"a",header2,"%s")
+;write_table(cygtimefile,"a",outlist,"%s%09i%09i")
+;print( "Output written to "+cygtimefile)
+;exit
 
 ;------------------------------------------------;
 ;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;
 ;------------------------------------------------;
+timeunits    = systemfunc("sed -n 1p "+cygtimefile+" | awk -F\' '{print $2}'")
 cygfilenames = systemfunc("cat "+cygtimefile+" | sed '1,2d' | awk '{print $1}'")
 cygmintimes  = toint(systemfunc("cat "+cygtimefile+" | sed '1,2d' | awk '{print $2}'"))
 cygmaxtimes  = toint(systemfunc("cat "+cygtimefile+" | sed '1,2d' | awk '{print $3}'"))
