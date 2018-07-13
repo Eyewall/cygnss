@@ -7,8 +7,8 @@
 #Will move files from the CYGNSS wget directory
 #tree into a specified output directory.
 #
-set indir  = "/jm13/pduran/cygnss/podaac-ftp.jpl.nasa.gov/allData/cygnss/L2/v2.0/2017/"
-set outdir = "/jm13/pduran/cygnss/2017/"
+set indir  = "/jm13/pduran/cygnss/2018/podaac-ftp.jpl.nasa.gov/allData/cygnss/L2/v2.0/2018/"
+set outdir = "/jm13/pduran/cygnss/2018/"
 
 cd $indir
 

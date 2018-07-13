@@ -46,15 +46,15 @@ timeunits= "seconds since 2016-1-1 00:00:00"
 ;   mintimes(i) = min(cygtimes_convert)
 ;   maxtimes(i) = max(cygtimes_convert)
 ;end do
-;;Write to output file
-;header = [/"Time units: '"+timeunits+"'"/]
-;header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
-;outlist = [/cygfilelist,mintimes,maxtimes/]
-;write_table(cygtimefile,"w",header,"%s")
-;write_table(cygtimefile,"a",header2,"%s")
-;write_table(cygtimefile,"a",outlist,"%s%09i%09i")
-;print( "Output written to "+cygtimefile)
-;exit
+;Write to output file
+header = [/"Time units: '"+timeunits+"'"/]
+header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
+outlist = [/cygfilelist,mintimes,maxtimes/]
+write_table(cygtimefile,"w",header,"%s")
+write_table(cygtimefile,"a",header2,"%s")
+write_table(cygtimefile,"a",outlist,"%s%09i%09i")
+print( "Output written to "+cygtimefile)
+exit
 
 ;------------------------------------------------;
 ;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;
@@ -76,7 +76,7 @@ stormnames = systemfunc("awk '{print $2}' stormlist.tmp | sed 's/,//g'")
 print( stormnames)
 
 ;Loop through all storms
-do i=1,nstorms-1
+do i=0,nstorms-1
    stormid   = stormids(i)
    stormname = stormnames(i)
    ;Get lines for the current storm by printing all lines between
@@ -99,9 +99,9 @@ do i=1,nstorms-1
    ;Determine whether north or south latitude; east or west longitude
    norslat := systemfunc("awk '{print substr($5,5,5)}' currentstorm.tmp | sed 's/,//g'")
    eorwlon := systemfunc("awk '{print substr($6,5,5)}' currentstorm.tmp | sed 's/,//g'")
-   ;Multiply any south latitudes or east longitudes by -1
+   ;Multiply any south latitudes or west longitudes by -1
    lat := where(norslat.eq."S",lat*-1,lat)
-   lon := where(eorwlon.eq."E",lon*-1,lon)
+   lon := where(eorwlon.eq."W",lon*-1,lon)
    ;Get intensity estimates
    vmax    := tofloat(systemfunc("awk -F ',' '{print $7}' currentstorm.tmp"))
    pmin    := tofloat(systemfunc("awk -F ',' '{print $8}' currentstorm.tmp"))
