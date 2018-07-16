@@ -19,8 +19,8 @@ datalevel = 1
 ;Beginning of time period
 yyyy1  = "2018"
   mm1  = "03"
-  dd1  = "19"
-  hh1  = "17"
+  dd1  = "20"
+  hh1  = "00"
   min1 = "00"
 ;End of time period
 yyyy2  = "2018"
@@ -35,7 +35,7 @@ searchradius= 500  ;Units km
 ;Ignore Block IIF GPS vehicles?
 ignoreblockIIF = True
 cygtimefile = "/jm13/pduran/cygnss/"+yyyy1+"/level"+datalevel+"/cygtimes.txt"
-outdir = "/jm13/pduran/cygnss/specpointmaps/"
+outdir = "/jm13/pduran/web/cygnss/specpointmaps/"
 
 ;------------------------------------------------;
 ;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;
@@ -105,7 +105,6 @@ do i=0,nfiles-1
    ;If there aren't any for this search radius, skip to end of loop
    if(all(ismissing(indices)))then
       print( "No observations found within search radius between the specified time in file "+cygfilename)
-      i = i + 1
       continue
    end if
    ;Get time, lats, lons
@@ -132,8 +131,9 @@ do i=0,nfiles-1
    minstring  := where(cygdattims(:,4).lt.10,"0"+minstring,minstring)
    secstring  := where(cygdattims(:,5).lt.10,"0"+secstring,secstring)
    dattimstring := yearstring+monstring+daystring+"_"+hrstring+minstring+secstring
+   ndattims = dimsizes(dattimstring)
    ;Set filename and open workstation 
-   filename = outdir+"specpoints_lat"+lat+"_lon"+lon+"_searchrad"+searchradius+"km_"+dattimstring(0)+"-"+dattimstring(dimsizes(dattimstring)-1)
+   filename = outdir+"specpoints_lat"+lat+"_lon"+lon+"_searchrad"+searchradius+"km_"+dattimstring(0)+"-"+dattimstring(ndattims-1)
    wks = gsn_open_wks("png",filename)
    ;Determine minimum and maximum extent of plot area (approximate 111 km per degree lat/lon)
    centerlatrad = lat*(2*3.141592/360.)
@@ -166,6 +166,11 @@ do i=0,nfiles-1
    res@mpOutlineOn            = True
    res@mpOutlineDrawOrder     = "Draw"
    res@mpFillDrawOrder        = "PreDraw"
+   res@gsnLeftString = monstring(0)+"/"+daystring(0)+"/"+yearstring(0)+" "\
+                       +hrstring(0)+":"+minstring(0)+" - "\
+                       +monstring(ndattims-1)+"/"+daystring(ndattims-1)+"/"\
+                       +yearstring(ndattims-1)+" "+hrstring(ndattims-1)\
+                       +":"+minstring(ndattims-1)+" "+UTC
    res@mpLimitMode            = "LatLon"
    res@mpMinLatF = minlat
    res@mpMaxLatF = maxlat
