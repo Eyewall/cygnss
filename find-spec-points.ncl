@@ -19,14 +19,14 @@ datalevel = 1
 ;Beginning of time period
 yyyy1  = "2018"
   mm1  = "03"
-  dd1  = "20"
+  dd1  = "19"
   hh1  = "00"
   min1 = "00"
 ;End of time period
 yyyy2  = "2018"
   mm2  = "03"
   dd2  = "20"
-  hh2  = "08"
+  hh2  = "00"
   min2 = "00"
 ;Location of search center and search radius. Must be floating-point.
 lat = 34.0
@@ -75,6 +75,7 @@ nfiles = dimsizes(cygfiles)
 do i=0,nfiles-1
    ;Read variables from CYGNSS file
    cygfilename = cygfiles(i)
+   satnum  = systemfunc("echo "+cygfilename+" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}'")
    cygfile = addfile(cygfilename,"r")
    cygvers = cygfile@title
    prn    := cygfile->prn_code    ;PRN code
@@ -170,12 +171,19 @@ do i=0,nfiles-1
                        +hrstring(0)+":"+minstring(0)+" - "\
                        +monstring(ndattims-1)+"/"+daystring(ndattims-1)+"/"\
                        +yearstring(ndattims-1)+" "+hrstring(ndattims-1)\
-                       +":"+minstring(ndattims-1)+" "+UTC
+                       +":"+minstring(ndattims-1)+" UTC"
+   res@gsnRightString = satnum
+   res@gsnLeftStringFontHeightF = 0.015
+   res@gsnRightStringFontHeightF = 0.015
+   res@gsnLeftStringOrthogonalPosF = 0.005;-0.0001
+   res@gsnRightStringOrthogonalPosF = 0.005;-0.0001
    res@mpLimitMode            = "LatLon"
    res@mpMinLatF = minlat
    res@mpMaxLatF = maxlat
    res@mpMinLonF = minlon
    res@mpMaxLonF = maxlon
+   res@tmXTOn = False
+   res@tmYROn = False
    res@gsnMaximize = True
    map = gsn_csm_map(wks,res)
    ;Add range ring
@@ -192,5 +200,4 @@ do i=0,nfiles-1
    gsn_polymarker(wks,map,lons,lats,dotres)
    draw(map)
    frame(wks)
-   i = i + 1
 end do
