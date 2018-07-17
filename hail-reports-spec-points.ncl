@@ -17,11 +17,12 @@ load "/jm13/pduran/ncl/radar/scripts/functions/rangering.ncl"
 ; Specular points come from level-1 files.
 ;---------------------------------------------
 
-maxtimediff  = 10    ;Minutes  
+maxtimediff  = 30    ;Minutes  
 searchradius = 50  ;km
 ;Ignore Block IIF GPS vehicles?
 ignoreblockIIF = True
-haildir = "/jm13/pduran/hail-reports/"
+haildir = "/jm13/pduran/hail-reports/20180317-20180320/"
+outdir  = haildir
 cygtimefile = "/jm13/pduran/cygnss/2018/level1/cygtimes.txt"
 cygdir = "/jm13/pduran/cygnss/2018/level1/"
 
@@ -86,6 +87,7 @@ delete(ctime)
 ctime1d  = ndtooned(ctime_conform)
 cyglat1d = ndtooned(cyglat)
 cyglon1d = ndtooned(cyglon)
+ctime1d@units = timeunits
 delete([/ctime_conform,cyglat,cyglon/])
 
 ;---------------------------------------;
@@ -100,6 +102,7 @@ do i=0,nhailfiles-1
    unixi = i + 1
    print( "Reading hail report file "+unixi+" of "+nhailfiles)
    hailfile = hailfiles(i)
+   hailreports := systemfunc("cat "+hailfile+" | sed 1,2d")
    ;Date
    yymmdd := systemfunc("sed -n 1p "+hailfile+" | awk '{print $5}'")
    yyyy   := 20+systemfunc("echo "+yymmdd+" | cut -c1-2")
@@ -122,104 +125,49 @@ do i=0,nhailfiles-1
    ;Loop through each of the reports in this file and find all CYGNSS samples within
    ;the specified time and space constraints.
    nreports = dimsizes(lat)
+   filecount = 0
    do j=0,nreports-1
       unixj = j + 1
       print( "Reading hail report "+unixj+" of "+nreports+" in file "+unixi+" of "+nhailfiles)
-      dt := abs(hailtime(j)-ctime1d)
+      dt := ctime1d-hailtime(j)
       dx := gc_latlon(lat(j),lon(j),cyglat1d,cyglon1d,2,4)
-      indices := ind(dt.le.maxtimediff.and.dx.le.searchradius)
+      indices := ind(abs(dt).le.maxtimediff.and.dx.le.searchradius)
       if(all(ismissing(indices)))then
          continue
       end if
-      print( cyglat1d(indices))
-      print( cyglon1d(indices))
-      print( dx(indices))
+      ;If we have observations, iterate filecount and print to output file
+      filecount = filecount + 1
+      filecountstr = tostring(filecount)
+      if(filecount.lt.10)then
+         filecountstr = "0"+filecountstr
+      end if
+      ;Convert dt to minutes for ease of intepretation and round all output vars
+      dtround  := decimalPlaces(dt(indices)/60.,3,True)
+      dxround  := decimalPlaces(dx(indices),3,True)
+      latround := decimalPlaces(cyglat1d(indices),3,True)
+      lonround := decimalPlaces(cyglon1d(indices),3,True)
       ;Convert time back to something readable
-;      cygdattims := round(cd_calendar(time,0),3)
-
-;      ;-----------------------------;
-;      ;PLOT SPECULAR POINT LOCATIONS;
-;      ;-----------------------------;
-;      ;Get date/time strings for specular points 
-;      yearstring := tostring(cygdattims(:,0))
-;      monstring  := tostring(cygdattims(:,1))
-;      daystring  := tostring(cygdattims(:,2))
-;      hrstring   := tostring(cygdattims(:,3))
-;      minstring  := tostring(cygdattims(:,4))
-;      secstring  := tostring(cygdattims(:,5))
-;      monstring  := where(cygdattims(:,1).lt.10,"0"+monstring,monstring)
-;      daystring  := where(cygdattims(:,2).lt.10,"0"+daystring,daystring)
-;      hrstring   := where(cygdattims(:,3).lt.10,"0"+hrstring,hrstring)
-;      minstring  := where(cygdattims(:,4).lt.10,"0"+minstring,minstring)
-;      secstring  := where(cygdattims(:,5).lt.10,"0"+secstring,secstring)
-;      dattimstring := yearstring+monstring+daystring+"_"+hrstring+minstring+secstring
-;      ndattims = dimsizes(dattimstring)
-;      ;Set filename and open workstation 
-;      filename = outdir+"specpoints_lat"+lat+"_lon"+lon+"_searchrad"+searchradius+"km_"+dattimstring(0)+"-"+dattimstring(ndattims-1)
-;      wks = gsn_open_wks("png",filename)
-;      ;Determine minimum and maximum extent of plot area (approximate 111 km per degree lat/lon)
-;      centerlatrad = lat*(2*3.141592/360.)
-;      range_lat = searchradius/111.
-;      range_lon = searchradius/(110.567*cos(centerlatrad))
-;      scale     = range_lon/range_lat
-;      degextent = searchradius/111.
-;      minlat = lat-range_lat 
-;      maxlat = lat+range_lat
-;      minlon = lon-range_lon
-;      maxlon = lon+range_lon
-;      res = True
-;      res@gsnDraw = False
-;      res@gsnFrame = False
-;      res@mpDataBaseVersion           = "MediumRes"
-;      res@mpDataSetName               = "Earth..4"
-;      res@mpGeophysicalLineColor      = "black"
-;      res@mpGeophysicalLineThicknessF = 5.0
-;      res@mpProvincialLineThicknessF = 5.0
-;      res@mpCountyLineThicknessF = 2.5
-;      res@mpCountyLineColor = res@mpGeophysicalLineColor
-;      res@mpOutlineBoundarySets       = "GeophysicalAndUSStates"
-;      res@mpOutlineOn                 = True
-;      res@mpUSStateLineColor          = res@mpGeophysicalLineColor
-;      res@mpOutlineSpecifiers = (/"United States : Counties"/)
-;      res@mpGridAndLimbDrawOrder = "Postdraw"
-;      res@mpLabelsOn             = False
-;      res@mpPerimOn              = True
-;      res@mpFillOn               = False
-;      res@mpOutlineOn            = True
-;      res@mpOutlineDrawOrder     = "Draw"
-;      res@mpFillDrawOrder        = "PreDraw"
-;      res@gsnLeftString = monstring(0)+"/"+daystring(0)+"/"+yearstring(0)+" "\
-;                          +hrstring(0)+":"+minstring(0)+" - "\
-;                          +monstring(ndattims-1)+"/"+daystring(ndattims-1)+"/"\
-;                          +yearstring(ndattims-1)+" "+hrstring(ndattims-1)\
-;                          +":"+minstring(ndattims-1)+" UTC"
-;      res@gsnRightString = satnum
-;      res@gsnLeftStringFontHeightF = 0.015
-;      res@gsnRightStringFontHeightF = 0.015
-;      res@gsnLeftStringOrthogonalPosF = 0.005;-0.0001
-;      res@gsnRightStringOrthogonalPosF = 0.005;-0.0001
-;      res@mpLimitMode            = "LatLon"
-;      res@mpMinLatF = minlat
-;      res@mpMaxLatF = maxlat
-;      res@mpMinLonF = minlon
-;      res@mpMaxLonF = maxlon
-;      res@tmXTOn = False
-;      res@tmYROn = False
-;      res@gsnMaximize = True
-;      map = gsn_csm_map(wks,res)
-;      ;Add range ring
-;      ringres = True
-;      ringres@Scale = scale
-;      ringres@gsLineThicknessF = 10.
-;      circle_ll(wks,map,lon,lat,range_lat,ringres)
-;      ;Add dots representing CYGNSS observations
-;      dotres = True
-;      dotres@tfPolyDrawOrder = "PreDraw"
-;      dotres@gsMarkerIndex = 1
-;      dotres@gsMarkerThicknessF = 10.
-;      dotres@gsMarkerColor = "red"
-;      gsn_polymarker(wks,map,lons,lats,dotres)
-;      draw(map)
-;      frame(wks)
+      cygdattims := round(cd_calendar(ctime1d(indices),0),3)
+      yearout  := tostring(cygdattims(:,0))
+      monthout := tostring(cygdattims(:,1))
+      dayout   := tostring(cygdattims(:,2))
+      hourout  := tostring(cygdattims(:,3))
+      minuout  := tostring(cygdattims(:,4))
+      secout   := tostring(cygdattims(:,5))
+      ;Add prefix zeros where necessary
+      monthout = where(cygdattims(:,1).lt.10,"0"+monthout,monthout)
+      dayout   = where(cygdattims(:,2).lt.10,"0"+dayout  ,dayout)
+      hourout  = where(cygdattims(:,3).lt.10,"0"+hourout ,hourout)
+      minuout  = where(cygdattims(:,4).lt.10,"0"+minuout ,minuout)
+      secout   = where(cygdattims(:,5).lt.10,"0"+secout  ,secout)
+      ;Print to output file for this storm report
+      outfile = hailfile+"_"+filecountstr+".txt"
+      header = [/(/hailreports(j)," ","YYYY MM DD HH mm ss cyglat cyglon dx(km) dt(min)"\
+                                     ,"---- -- -- -- -- -- ------ ------ ------ -------"/)/]
+      data  := [/yearout,monthout,dayout,hourout,minuout,secout,\
+                 latround,lonround,dxround,dtround/]
+      print( "Writing output to "+outfile)
+      write_table(outfile,"w",header,"%s")
+      write_table(outfile,"a",data,"%s%s%s%s%s%s%6.2f%6.2f%6.2f%7.2f")
    end do   ;Individual hail report loop
 end do   ;Hail report file loop
