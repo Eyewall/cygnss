@@ -48,13 +48,14 @@ end if
 ;we need to conform cygtime to have the same rank & dimension sizes as cyglat.
 ctime_conform = round(conform(cyglat,cygtime,(/0,1/)),3)
 ctime_conform@units = timeunits
+filenames_conform = conform(cyglat,filenames,(/0,1/))
 
 ;Make CYNGSS time, lat, and lon arrays 1-D to make
 ;them easier to compare to hail files
 ctime1d    = ndtooned(ctime_conform)
 cyglat1d   = ndtooned(cyglat)
 cyglon1d   = ndtooned(cyglon)
-cygfiles1d = ndtooned(filenames)
+cygfiles1d = ndtooned(filenames_conform)
 ctime1d@units = cygtime@units
 delete([/ctime_conform,cyglat,cyglon,filenames/])
 
@@ -84,6 +85,8 @@ do i=0,nhailfiles-1
    sec   := toint(haildata(:,5))
    lat   := haildata(:,6)
    lon   := haildata(:,7)
+   dx    := haildata(:,8)
+   dt    := haildata(:,9)
 
    ;Loop through each specular point in the hail file
    nhailobs = dimsizes(year)
@@ -91,11 +94,21 @@ do i=0,nhailfiles-1
    do j=0,nhailobs-1
       unixj = j + 1
       print( "Reading hail report "+unixj+" of "+nhailobs+" in file "+unixi+" of "+nhailfiles)
-      ;Find CYGNSS observation time that matches
+      ;Find CYGNSS observation that matches time
       indices:= ind((hailtime(j)-ctime).eq.0)
       if(all(ismissing(indices)))then
+         print( "CYGNSS time don't match! Moving on...")
          continue
       end if
-      print( indices)
+      ;Find observation that matches location
+      print( lat(j))
+      print( lon(j))
+      print( cyglat1d(indices))
+      print( cyglon1d(indices))
+      dist = gc_latlon(lat(j),lon(j),cyglat1d(indices),cyglon1d(indices),2,4)
+      mindistind = indices(minind(dist))
+      cygfilename = cygfiles1d(mindistind)      
+      print( cygfilename)
+      exit
    end do   ;Loop through each specular point in the hail file
 end do   ;Loop through each hail file
