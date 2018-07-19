@@ -21,7 +21,7 @@ maxtimediff  = 30    ;Minutes
 searchradius = 50  ;km
 ;Ignore Block IIF GPS vehicles?
 ignoreblockIIF = True
-haildir = "/jm13/pduran/hail-reports/20180317-20180320/"
+haildir = "/jm13/pduran/hail-reports/"
 outdir  = haildir
 cygtimefile = "/jm13/pduran/cygnss/2018/level1/cygtimes.txt"
 cygdir = "/jm13/pduran/cygnss/2018/level1/"

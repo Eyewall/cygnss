@@ -13,6 +13,7 @@ load "/jm13/pduran/ncl/radar/scripts/functions/rangering.ncl"
 ; Finds any specular points that fall within a
 ; user-defined time interval and within a
 ; search radius from a user-defined lat,lon.
+; Plots these points on a map.
 ;---------------------------------------------
 
 datalevel = 1
