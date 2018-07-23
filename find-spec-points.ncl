@@ -16,27 +16,37 @@ load "/jm13/pduran/ncl/radar/scripts/functions/rangering.ncl"
 ; Plots these points on a map.
 ;---------------------------------------------
 
+opt = 1   ;0=Plot all specular points on a single plot
+          ;1=Create multiple plots, each with a different specular point highlighted
 datalevel = 1
 ;Beginning of time period
-yyyy1  = "2018"
-  mm1  = "03"
-  dd1  = "19"
-  hh1  = "00"
-  min1 = "00"
+yyyy1  = "2017"
+  mm1  = "05"
+  dd1  = "12"
+  hh1  = "15"
+  min1 = "30"
 ;End of time period
-yyyy2  = "2018"
-  mm2  = "03"
-  dd2  = "20"
-  hh2  = "00"
-  min2 = "00"
+yyyy2  = "2017"
+  mm2  = "05"
+  dd2  = "12"
+  hh2  = "16"
+  min2 = "30"
 ;Location of search center and search radius. Must be floating-point.
-lat = 34.0
-lon = -87.0
-searchradius= 500  ;Units km
+;MIAMI
+lat = 25.78
+lon = -80.19
+;JACKSONVILLE
+;lat = 30.3322
+;lon = -81.6557
+;MOUNT EVEREST
+;lat = 27.9881
+;lon = 86.9250
+searchradius = 200  ;Units km
 ;Ignore Block IIF GPS vehicles?
 ignoreblockIIF = True
 cygtimefile = "/jm13/pduran/cygnss/"+yyyy1+"/level"+datalevel+"/cygtimes.txt"
-outdir = "/jm13/pduran/web/cygnss/specpointmaps/"
+outdir = "/jm13/pduran/web/cygnss/specpointmaps/miami2/searchrad-"+searchradius+"km/"
+system("mkdir "+outdir)
 
 ;------------------------------------------------;
 ;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;
@@ -109,96 +119,207 @@ do i=0,nfiles-1
       print( "No observations found within search radius between the specified time in file "+cygfilename)
       continue
    end if
+   printVarSummary( dist1d)
+   print( indices)
    ;Get time, lats, lons
    ninds = dimsizes(indices)
    time := ctime1d(indices)
    lats := lats1d(indices)
-   lons := lons1d(indices) - 360
+   lons := mod((lons1d(indices)+180),360) - 180
    ;Convert time back to something readable
    time@units = timeunits 
    cygdattims := round(cd_calendar(time,0),3)
    ;-----------------------------;
    ;PLOT SPECULAR POINT LOCATIONS;
    ;-----------------------------;
-   ;Get date/time strings for specular points 
-   yearstring := tostring(cygdattims(:,0))
-   monstring  := tostring(cygdattims(:,1))
-   daystring  := tostring(cygdattims(:,2))
-   hrstring   := tostring(cygdattims(:,3))
-   minstring  := tostring(cygdattims(:,4))
-   secstring  := tostring(cygdattims(:,5))
-   monstring  := where(cygdattims(:,1).lt.10,"0"+monstring,monstring)
-   daystring  := where(cygdattims(:,2).lt.10,"0"+daystring,daystring)
-   hrstring   := where(cygdattims(:,3).lt.10,"0"+hrstring,hrstring)
-   minstring  := where(cygdattims(:,4).lt.10,"0"+minstring,minstring)
-   secstring  := where(cygdattims(:,5).lt.10,"0"+secstring,secstring)
-   dattimstring := yearstring+monstring+daystring+"_"+hrstring+minstring+secstring
-   ndattims = dimsizes(dattimstring)
-   ;Set filename and open workstation 
-   filename = outdir+"specpoints_lat"+lat+"_lon"+lon+"_searchrad"+searchradius+"km_"+dattimstring(0)+"-"+dattimstring(ndattims-1)
-   wks = gsn_open_wks("png",filename)
-   ;Determine minimum and maximum extent of plot area (approximate 111 km per degree lat/lon)
-   centerlatrad = lat*(2*3.141592/360.)
-   range_lat = searchradius/111.
-   range_lon = searchradius/(110.567*cos(centerlatrad))
-   scale     = range_lon/range_lat
-   degextent = searchradius/111.
-   minlat = lat-range_lat 
-   maxlat = lat+range_lat
-   minlon = lon-range_lon
-   maxlon = lon+range_lon
-   res = True
-   res@gsnDraw = False
-   res@gsnFrame = False
-   res@mpDataBaseVersion           = "MediumRes"
-   res@mpDataSetName               = "Earth..4"
-   res@mpGeophysicalLineColor      = "black"
-   res@mpGeophysicalLineThicknessF = 5.0
-   res@mpProvincialLineThicknessF = 5.0
-   res@mpCountyLineThicknessF = 2.5
-   res@mpCountyLineColor = res@mpGeophysicalLineColor
-   res@mpOutlineBoundarySets       = "GeophysicalAndUSStates"
-   res@mpOutlineOn                 = True
-   res@mpUSStateLineColor          = res@mpGeophysicalLineColor
-   res@mpOutlineSpecifiers = (/"United States : Counties"/)
-   res@mpGridAndLimbDrawOrder = "Postdraw"
-   res@mpLabelsOn             = False
-   res@mpPerimOn              = True
-   res@mpFillOn               = False
-   res@mpOutlineOn            = True
-   res@mpOutlineDrawOrder     = "Draw"
-   res@mpFillDrawOrder        = "PreDraw"
-   res@gsnLeftString = monstring(0)+"/"+daystring(0)+"/"+yearstring(0)+" "\
-                       +hrstring(0)+":"+minstring(0)+" - "\
-                       +monstring(ndattims-1)+"/"+daystring(ndattims-1)+"/"\
-                       +yearstring(ndattims-1)+" "+hrstring(ndattims-1)\
-                       +":"+minstring(ndattims-1)+" UTC"
-   res@gsnRightString = satnum
-   res@gsnLeftStringFontHeightF = 0.015
-   res@gsnRightStringFontHeightF = 0.015
-   res@gsnLeftStringOrthogonalPosF = 0.005;-0.0001
-   res@gsnRightStringOrthogonalPosF = 0.005;-0.0001
-   res@mpLimitMode            = "LatLon"
-   res@mpMinLatF = minlat
-   res@mpMaxLatF = maxlat
-   res@mpMinLonF = minlon
-   res@mpMaxLonF = maxlon
-   res@tmXTOn = False
-   res@tmYROn = False
-   res@gsnMaximize = True
-   map = gsn_csm_map(wks,res)
-   ;Add range ring
-   ringres = True
-   ringres@Scale = scale
-   ringres@gsLineThicknessF = 10.
-   circle_ll(wks,map,lon,lat,range_lat,ringres)
-   ;Add dots representing CYGNSS observations
-   dotres = True
-   dotres@tfPolyDrawOrder = "PreDraw"
-   dotres@gsMarkerIndex = 1
-   dotres@gsMarkerThicknessF = 10.
-   dotres@gsMarkerColor = "red"
-   gsn_polymarker(wks,map,lons,lats,dotres)
-   draw(map)
-   frame(wks)
+   if(opt.eq.0)then
+      ;Get date/time strings for specular points 
+      yearstring := tostring(cygdattims(:,0))
+      monstring  := tostring(cygdattims(:,1))
+      daystring  := tostring(cygdattims(:,2))
+      hrstring   := tostring(cygdattims(:,3))
+      minstring  := tostring(cygdattims(:,4))
+      secstring  := tostring(cygdattims(:,5))
+      monstring  := where(cygdattims(:,1).lt.10,"0"+monstring,monstring)
+      daystring  := where(cygdattims(:,2).lt.10,"0"+daystring,daystring)
+      hrstring   := where(cygdattims(:,3).lt.10,"0"+hrstring,hrstring)
+      minstring  := where(cygdattims(:,4).lt.10,"0"+minstring,minstring)
+      secstring  := where(cygdattims(:,5).lt.10,"0"+secstring,secstring)
+      dattimstring := yearstring+monstring+daystring+"_"+hrstring+minstring+secstring
+      ndattims = dimsizes(dattimstring)
+      ;Set filename and open workstation 
+      filename = outdir+"specpoints_lat"+lat+"_lon"+lon+"_searchrad"+searchradius+"km_"+dattimstring(0)+"-"+dattimstring(ndattims-1)
+      wks = gsn_open_wks("png",filename)
+      ;Determine minimum and maximum extent of plot area (approximate 111 km per degree lat/lon)
+      centerlatrad = lat*(2*3.141592/360.)
+      range_lat = searchradius/111.
+      range_lon = searchradius/(110.567*cos(centerlatrad))
+      scale     = range_lon/range_lat
+      degextent = searchradius/111.
+      minlat = lat-range_lat 
+      maxlat = lat+range_lat
+      minlon = lon-range_lon
+      maxlon = lon+range_lon
+      res = True
+      res@gsnDraw = False
+      res@gsnFrame = False
+      res@mpDataBaseVersion           = "MediumRes"
+      res@mpDataSetName               = "Earth..4"
+      res@mpGeophysicalLineColor      = "black"
+      res@mpGeophysicalLineThicknessF = 5.0
+      res@mpProvincialLineThicknessF = 5.0
+      res@mpCountyLineThicknessF = 2.5
+      res@mpCountyLineColor = res@mpGeophysicalLineColor
+      res@mpOutlineBoundarySets       = "GeophysicalAndUSStates"
+      res@mpOutlineOn                 = True
+      res@mpUSStateLineColor          = res@mpGeophysicalLineColor
+      res@mpOutlineSpecifiers = (/"United States : Counties"/)
+      res@mpGridAndLimbDrawOrder = "Postdraw"
+      res@mpLabelsOn             = False
+      res@mpPerimOn              = True
+      res@mpFillOn               = False
+      res@mpOutlineOn            = True
+      res@mpOutlineDrawOrder     = "Draw"
+      res@mpFillDrawOrder        = "PreDraw"
+      res@gsnLeftString = monstring(0)+"/"+daystring(0)+"/"+yearstring(0)+" "\
+                          +hrstring(0)+":"+minstring(0)+" - "\
+                          +monstring(ndattims-1)+"/"+daystring(ndattims-1)+"/"\
+                          +yearstring(ndattims-1)+" "+hrstring(ndattims-1)\
+                          +":"+minstring(ndattims-1)+" UTC"
+      res@gsnRightString = satnum
+      res@gsnLeftStringFontHeightF = 0.015
+      res@gsnRightStringFontHeightF = 0.015
+      res@gsnLeftStringOrthogonalPosF = 0.005;-0.0001
+      res@gsnRightStringOrthogonalPosF = 0.005;-0.0001
+      res@mpLimitMode            = "LatLon"
+      res@mpMinLatF = minlat
+      res@mpMaxLatF = maxlat
+      res@mpMinLonF = minlon
+      res@mpMaxLonF = maxlon
+      res@tmXTOn = False
+      res@tmYROn = False
+      res@gsnMaximize = True
+      map = gsn_csm_map(wks,res)
+      ;Add range ring
+      ringres = True
+      ringres@Scale = scale
+      ringres@gsLineThicknessF = 10.
+      circle_ll(wks,map,lon,lat,range_lat,ringres)
+      ;Add dots representing CYGNSS observations
+      dotres = True
+      dotres@tfPolyDrawOrder = "PreDraw"
+      dotres@gsMarkerIndex = 1
+      dotres@gsMarkerThicknessF = 10.
+      dotres@gsMarkerColor = "red"
+      gsn_polymarker(wks,map,lons,lats,dotres)
+      ;Add text to show time of first and last CYGNSS obs in the plot
+      ;Time is defined by the timeunits variable read from the cygtime file
+      text = tostring((/min(round(time,3)),max(round(time,3))/))
+      txlats = (/lats(ind(round(time,3).eq.min(round(time,3)))),\
+                 lats(ind(round(time,3).eq.max(round(time,3))))/)
+      txlons = (/lons(ind(round(time,3).eq.min(round(time,3)))),\
+                 lons(ind(round(time,3).eq.max(round(time,3))))/)
+      txres = True
+      txres@txFontHeightF = 0.02
+      tx = gsn_add_text(wks,map,text,txlons,txlats,txres)
+      draw(map)
+      frame(wks)
+   else if(opt.eq.1)
+     ;Get date/time strings for specular points 
+      yearstring := tostring(cygdattims(:,0))
+      monstring  := tostring(cygdattims(:,1))
+      daystring  := tostring(cygdattims(:,2))
+      hrstring   := tostring(cygdattims(:,3))
+      minstring  := tostring(cygdattims(:,4))
+      secstring  := tostring(cygdattims(:,5))
+      monstring  := where(cygdattims(:,1).lt.10,"0"+monstring,monstring)
+      daystring  := where(cygdattims(:,2).lt.10,"0"+daystring,daystring)
+      hrstring   := where(cygdattims(:,3).lt.10,"0"+hrstring,hrstring)
+      minstring  := where(cygdattims(:,4).lt.10,"0"+minstring,minstring)
+      secstring  := where(cygdattims(:,5).lt.10,"0"+secstring,secstring)
+      dattimstring := yearstring+monstring+daystring+"_"+hrstring+minstring+secstring
+      ndattims = dimsizes(dattimstring)
+      ;Determine minimum and maximum extent of plot area (approximate 111 km per degree lat/lon)
+      centerlatrad = lat*(2*3.141592/360.)
+      range_lat = searchradius/111.
+      range_lon = searchradius/(110.567*cos(centerlatrad))
+      scale     = range_lon/range_lat
+      degextent = searchradius/111.
+      minlat = lat-range_lat 
+      maxlat = lat+range_lat
+      minlon = lon-range_lon
+      maxlon = lon+range_lon
+      npoints = dimsizes(lats)
+      tx := new(npoints,"graphic")
+      do j=0,npoints-1
+         unixj = j + 1
+         print( "Plotting image "+unixj+" of "+npoints)
+         ;Set filename and open workstation 
+         filename = outdir+tostring(round(time(j),3))
+         wks = gsn_open_wks("png",filename)
+         res = True
+         res@gsnDraw = False
+         res@gsnFrame = False
+         res@mpDataBaseVersion           = "MediumRes"
+         res@mpDataSetName               = "Earth..4"
+         res@mpGeophysicalLineColor      = "black"
+         res@mpGeophysicalLineThicknessF = 5.0
+         res@mpProvincialLineThicknessF = 5.0
+         res@mpCountyLineThicknessF = 2.5
+         res@mpCountyLineColor = res@mpGeophysicalLineColor
+         res@mpOutlineBoundarySets       = "GeophysicalAndUSStates"
+         res@mpOutlineOn                 = True
+         res@mpUSStateLineColor          = res@mpGeophysicalLineColor
+         res@mpOutlineSpecifiers = (/"United States : Counties"/)
+         res@mpGridAndLimbDrawOrder = "Postdraw"
+         res@mpLabelsOn             = False
+         res@mpPerimOn              = True
+         res@mpFillOn               = False
+         res@mpOutlineOn            = True
+         res@mpOutlineDrawOrder     = "Draw"
+         res@mpFillDrawOrder        = "PreDraw"
+         res@gsnLeftString = monstring(0)+"/"+daystring(0)+"/"+yearstring(0)+" "\
+                             +hrstring(0)+":"+minstring(0)+" - "\
+                             +monstring(ndattims-1)+"/"+daystring(ndattims-1)+"/"\
+                             +yearstring(ndattims-1)+" "+hrstring(ndattims-1)\
+                             +":"+minstring(ndattims-1)+" UTC"
+         res@gsnRightString = satnum
+         res@gsnLeftStringFontHeightF = 0.015
+         res@gsnRightStringFontHeightF = 0.015
+         res@gsnLeftStringOrthogonalPosF = 0.005;-0.0001
+         res@gsnRightStringOrthogonalPosF = 0.005;-0.0001
+         res@mpLimitMode            = "LatLon"
+         res@mpMinLatF = minlat
+         res@mpMaxLatF = maxlat
+         res@mpMinLonF = minlon
+         res@mpMaxLonF = maxlon
+         res@tmXTOn = False
+         res@tmYROn = False
+         res@gsnMaximize = True
+         map = gsn_csm_map(wks,res)
+         ;Add range ring
+         ringres = True
+         ringres@Scale = scale
+         ringres@gsLineThicknessF = 10.
+         circle_ll(wks,map,lon,lat,range_lat,ringres)
+         ;Add dots representing CYGNSS observations
+         dotres = True
+         dotres@tfPolyDrawOrder = "PreDraw"
+         dotres@gsMarkerIndex = 1
+         dotres@gsMarkerThicknessF = 15.
+         dotres@gsMarkerColor = "red"
+         gsn_polymarker(wks,map,lons,lats,dotres)
+         ;Add text to show time of the current CYGNSS obs in the plot
+         ;Time is defined by the timeunits variable read from the cygtime file
+         text = tostring(round(time(j),3))
+         txlats = lats(j)
+         txlons = lons(j)
+         txres = True
+         txres@txFontHeightF = 0.015
+         tx(j) = gsn_add_text(wks,map,text,txlons,txlats,txres)
+         draw(map)
+         frame(wks)
+      end do
+   end if
+   end if
 end do

@@ -63,7 +63,8 @@ delete([/ctime_conform,cyglat,cyglon,filenames/])
 ctime = round(cd_convert(ctime1d,timeunits),3)
 
 ;Convert CYGNSS longitude to -180 to 180 coodinates
-cyglon1d = 180 - cyglon1d
+;Source: https://gis.stackexchange.com/questions/201789/verifying-formula-that-will-convert-longitude-0-360-to-180-to-180
+cyglon1d = mod((cyglon1d(indices)+180),360) - 180 
 
 ;--------------------------------------------------;
 ;LOOP THROUGH HAIL FILES AND GET CYGNSS LOCATIONS. ;
@@ -101,14 +102,73 @@ do i=0,nhailfiles-1
          continue
       end if
       ;Find observation that matches location
-      print( lat(j))
-      print( lon(j))
-      print( cyglat1d(indices))
-      print( cyglon1d(indices))
       dist = gc_latlon(lat(j),lon(j),cyglat1d(indices),cyglon1d(indices),2,4)
       mindistind = indices(minind(dist))
       cygfilename = cygfiles1d(mindistind)      
-      print( cygfilename)
-      exit
+      ;Read CYGNSS file and plot DDM
+      cygfile = addfile(cygfilename,"r")
+;      brcs    = cygfile->brcs
+      brcs    = cygfile->power_analog
+;      brcs    = cygfile->eff_scatter
+      spdelay = cygfile->sp_precise_delay ;Specular point delay in chips (1/1,023,000 s).
+      spdopp  = cygfile->sp_precise_dopp  ;Specular point Doppler in Hz.
+      delayres= cygfile->delay_resolution ;DDM delay bin resolution in chips.
+      doppres = cygfile->dopp_resolution  ;DDM Doppler bin resolution in Hz.
+      spdelayrow = round(cygfile->brcs_ddm_sp_bin_delay_row,3)
+      spdoppcol  = round(cygfile->brcs_ddm_sp_bin_dopp_col,3)
+      ;Make arrays 1-D to make them easier to deal with
+;      printVarSummary( brcs)
+      ;FOR NOW, JUST PICK AN INDEX...
+      printMinMax(spdelay,0)
+      pdfopt = True
+      pdfopt@bin_min = -10
+      pdfopt@bin_max = 10
+      delaypdf = pdfx(spdelay,10,pdfopt)
+      sampleind = 36000
+      ddmind    = 2
+      ;Get appropriate BRCS for this sample time and DDM index
+      brcsvals := brcs(sampleind,ddmind,:,:)
+      ;Get delay and doppler values for this DDM
+      delays  = new(17,"float")
+      doppler = new(11,"float")
+      delays = 0
+      doppler = 0
+      ;Set the delay and Doppler at the specular point
+      thisspdelayrow = spdelayrow(sampleind,ddmind)
+      thisspdoppcol  = spdoppcol (sampleind,ddmind)
+      delays (thisspdelayrow) = spdelay(sampleind,ddmind)
+      doppler(thisspdoppcol ) = spdopp (sampleind,ddmind)
+      ;Set the delay and Doppler at the rest of the points
+      delayinds = ispan(0,16,1)
+      doppinds  = ispan(0,10,1)
+      delayindsrel = delayinds - thisspdelayrow
+      doppindsrel  = doppinds - thisspdoppcol
+      delays = (delayindsrel*delayres)+delays(thisspdelayrow)
+      doppler= (doppindsrel*doppres)+delays(thisspdoppcol)
+      brcsvals!0 = "delay"
+      brcsvals!1 = "doppler"
+      brcsvals&delay = delays
+      brcsvals&doppler = doppler/1000. ;Convert to kHz
+      printMinMax(delays,0)
+      ;Plot the DDM!
+      filename = "/jm13/pduran/web/ddm.png"
+      wks = gsn_open_wks("png",filename)
+      gsn_define_colormap(wks,"BlGrYeOrReVi200")
+      res = True
+      res@cnFillMode = "RasterFill"
+      res@cnFillOn   = True
+      res@cnLinesOn  = False
+      res@cnLevelSelectionMode = "ManualLevels"
+      res@cnMinLevelValF = 1e-20
+      res@cnMaxLevelValF = 1e-18
+      res@cnLevelSpacingF = 5e-20
+      res@tiYAxisString = "Delay (chips) (1 chip = 1/1,023,000 s)"
+      res@tiXAxisString = "Doppler (kHz)"
+      res@lbOrientation = "vertical"
+      res@tmYROn = False
+      res@tmXTOn = False
+      res@cnInfoLabelOn = False
+      res@cnLineLabelsOn = False
+      plot = gsn_csm_contour(wks,brcsvals,res)
    end do   ;Loop through each specular point in the hail file
 end do   ;Loop through each hail file
