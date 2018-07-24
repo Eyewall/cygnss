@@ -159,9 +159,16 @@ do i=0,nhailfiles-1
       res@cnFillOn   = True
       res@cnLinesOn  = False
       res@cnLevelSelectionMode = "ManualLevels"
-      res@cnMinLevelValF = 1e-20
-      res@cnMaxLevelValF = 1e-18
-      res@cnLevelSpacingF = 5e-20
+      if(toplot.eq.1)then
+         res@cnMinLevelValF = 1e-20
+         res@cnMaxLevelValF = 1e-18
+         res@cnLevelSpacingF = 5e-20
+      end if
+      if(toplot.eq.2)then
+         res@cnMinLevelValF = 1e6
+         res@cnMaxLevelValF = 1e7
+         res@cnLevelSpacingF = 5e4
+      end if
       res@tiYAxisString = "Delay (chips) (1 chip = 1/1,023,000 s)"
       res@tiXAxisString = "Doppler (kHz)"
       res@lbOrientation = "vertical"

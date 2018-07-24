@@ -75,7 +75,7 @@ if(ignoreblockIIF)then
 end if
 
 ;Convert CYGNSS longitude to -180 to 180 coodinates
-cyglon = 180 - cyglon
+cyglon = mod((cyglon+180),360) - 180
 
 ;Since Level 1 files have 4 specular points per satellite per timestamp time,
 ;we need to conform cygtime to have the same rank & dimension sizes as cyglat.
