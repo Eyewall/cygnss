@@ -24,7 +24,7 @@ ignoreblockIIF = True
 haildir = "/jm13/pduran/hail-reports/"
 outdir  = haildir
 cygtimefile = "/jm13/pduran/cygnss/2018/level1/cygtimes.txt"
-cygdir = "/jm13/pduran/cygnss/2018/level1/"
+cygdir = "/jm13/pduran/cygnss/2018/level1/neededfiles/"
 
 ;------------------------------------------------;
 ;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;
@@ -43,6 +43,7 @@ cygfiles = systemfunc("ls "+cygdir+"*nc")
 nfiles = dimsizes(cygfiles)
 ;Maximum of 86400 obs times each day; up to 4 specular points per obs time
 cygvers = new(nfiles,"string")
+satnum  = new(nfiles,"string")
 ctime   = new((/nfiles,86400/),"double")
 prn     = new((/nfiles,86400,4/),"byte")
 cyglat  = new((/nfiles,86400,4/),"float")
@@ -52,7 +53,7 @@ do i=0,nfiles-1
    unixi = i + 1
    print( "Reading CYGNSS file "+unixi+" of "+nfiles)
    cygfilename = cygfiles(i)
-   satnum  = systemfunc("echo "+cygfilename+" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}'")
+   satnum(i) = systemfunc("echo "+cygfilename+" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}'")
    cygfile = addfile(cygfilename,"r")
    cygvers(i) = cygfile@title
    nsamples= dimsizes(cygfile->sample)
@@ -62,6 +63,12 @@ do i=0,nfiles-1
    cyglon (i,:nsamples-1,:) = cygfile->sp_lon
    ctime  (i,:nsamples-1)   = cd_convert(cygtime,timeunits)  ;Convert to same time units as input
 end do
+
+;Conform satnum to ctime
+satnums = conform(ctime,satnum,0)
+
+printVarSummary( satnums)
+printVarSummary( ctime)
 
 ;Ignore retrievals that use BlockIIF satellites
 if(ignoreblockIIF)then  
@@ -80,15 +87,17 @@ cyglon = mod((cyglon+180),360) - 180
 ;Since Level 1 files have 4 specular points per satellite per timestamp time,
 ;we need to conform cygtime to have the same rank & dimension sizes as cyglat.
 ctime_conform = conform(cyglat,ctime,(/0,1/))
+satnum_conform= conform(cyglat,satnums,(/0,1/))
 delete(ctime)
 
 ;Make CYNGSS time, lat, and lon arrays 1-D to make
 ;then easier to compare to hail reports
+satnum1d = ndtooned(satnum_conform)
 ctime1d  = ndtooned(ctime_conform)
 cyglat1d = ndtooned(cyglat)
 cyglon1d = ndtooned(cyglon)
 ctime1d@units = timeunits
-delete([/ctime_conform,cyglat,cyglon/])
+delete([/ctime_conform,cyglat,cyglon,satnums/])
 
 ;---------------------------------------;
 ;LOOP THROUGH HAIL REPORT FILES AND FIND;
@@ -100,7 +109,7 @@ hailfiles = systemfunc("ls "+haildir+"*csv")
 nhailfiles= dimsizes(hailfiles)
 do i=0,nhailfiles-1
    unixi = i + 1
-   print( "Reading hail report file "+unixi+" of "+nhailfiles)
+   print( "Reading hail report file "+unixi+" of "+nhailfiles+"  "+hailfiles(i))
    hailfile = hailfiles(i)
    hailreports := systemfunc("cat "+hailfile+" | sed 1,2d")
    ;Date
@@ -112,6 +121,7 @@ do i=0,nhailfiles-1
    hh   := systemfunc("cat "+hailfile+" | sed 1,2d | awk -F',' '{print $1}' | cut -c1-2")
    minu := systemfunc("cat "+hailfile+" | sed 1,2d | awk -F',' '{print $1}' | cut -c3-4")
    ss   := 0
+
    ;Get date/time arrays in terms of reference time
    hailtime := cd_inv_calendar(conform(hh,toint(yyyy),-1),conform(hh,toint(mm),-1),\
                conform(hh,toint(dd),-1),toint(hh),toint(minu),conform(hh,ss,-1),timeunits,0)
@@ -141,6 +151,9 @@ do i=0,nhailfiles-1
       if(filecount.lt.10)then
          filecountstr = "0"+filecountstr
       end if
+      ;Get satellite numbers
+      satnums := satnum1d(indices)
+
       ;Convert dt to minutes for ease of intepretation and round all output vars
       dtround  := decimalPlaces(dt(indices)/60.,3,True)
       dxround  := decimalPlaces(dx(indices),3,True)
@@ -162,12 +175,12 @@ do i=0,nhailfiles-1
       secout   = where(cygdattims(:,5).lt.10,"0"+secout  ,secout)
       ;Print to output file for this storm report
       outfile = hailfile+"_"+filecountstr+".txt"
-      header = [/(/hailreports(j)," ","YYYY MM DD HH mm ss cyglat cyglon dx(km) dt(min)"\
-                                     ,"---- -- -- -- -- -- ------ ------ ------ -------"/)/]
+      header = [/(/hailreports(j)," ","YYYY MM DD HH mm ss cyglat cyglon dx(km) dt(min)  sat "\
+                                     ,"---- -- -- -- -- -- ------ ------ ------ ------- -----"/)/]
       data  := [/yearout,monthout,dayout,hourout,minuout,secout,\
-                 latround,lonround,dxround,dtround/]
+                 latround,lonround,dxround,dtround,satnums/]
       print( "Writing output to "+outfile)
       write_table(outfile,"w",header,"%s")
-      write_table(outfile,"a",data,"%s%s%s%s%s%s%6.2f%6.2f%6.2f%7.2f")
+      write_table(outfile,"a",data,"%s%s%s%s%s%s%6.2f%6.2f%6.2f%7.2f%s")
    end do   ;Individual hail report loop
 end do   ;Hail report file loop

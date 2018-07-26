@@ -43,7 +43,11 @@ do i=0,nhailfiles-1
    print( "Reading hail file "+unixi+" of "+nhailfiles)
    print( hailfiles(i))
    report = systemfunc("sed -n 1p "+hailfiles(i))
-   data := readAsciiTable(hailfiles(i),10,"float",4)
+   print( report)
+   haillat = stringtofloat(systemfunc("sed -n 1p "+hailfiles(i)+" | awk -F',' '{print $6}'"))
+   haillon = stringtofloat(systemfunc("sed -n 1p "+hailfiles(i)+" | awk -F',' '{print $7}'"))
+
+   data := readAsciiTable(hailfiles(i),11,"float",4)
    year   := toint(data(:,0))
    month  := toint(data(:,1))
    day    := toint(data(:,2))
@@ -54,6 +58,7 @@ do i=0,nhailfiles-1
    cyglon := data(:,7)
    dx     := data(:,8)
    dt     := data(:,9)
+   satnum := "cyg0"+tostring(toint(data(:,10)))
 
    ;Get strings for dates
    YYYY := tostring(year)
@@ -75,12 +80,16 @@ do i=0,nhailfiles-1
    dist = gc_latlon(cyglat(centerind),cyglon(centerind),radlat,radlon,2,4)
    stn  = stnid(minind(dist))
    ;Some stations have two IDs. Substitute station IDs where necessary.
-   stn = where(stn.eq."KINX","KTSA",stn)
-   stn = where(stn.eq."KDGX","KJAN",stn)
+   stn = where(stn.eq."KINX","KTSA",stn)  ;Tulsa (INX) listed as TSA in archive
+   stn = where(stn.eq."KDGX","KJAN",stn)  ;Jackson, MS (DGX) listed as JAN in archive
+   stn = where(stn.eq."KFWS","KFWD",stn)  ;Dallas (FWS) listed as FWD in archive
+   stn = where(stn.eq."KTLX","KOUN",stn)  ;Oklahoma City (TLX) listed as OUN in archive
+   stn = where(stn.eq."KBIX","KMOB",stn)  ;Keesler (BIX) not available for download
 
    ;Add all radar files from this station
-   filelist := systemfunc("ls "+raddir+stn+"/*nc") 
-   radfiles := addfiles(filelist,"r")
+   filelist := systemfunc("ls "+raddir+stn+"/*nc")
+   print( filelist)
+   radfiles  = addfiles(filelist,"r")
    ListSetType(radfiles,"join")
 
    ;Get radar dates/times
@@ -94,7 +103,13 @@ do i=0,nhailfiles-1
    radsec   := conform(raddates(:,0),0,-1)
 
    ;Read values from NEXRAD files
-   ref    := radfiles[:]->BaseReflectivity
+   type   := radfiles[0]@keywords_vocabulary
+   if(type.eq."N0R")then
+      ref    := radfiles[:]->BaseReflectivity
+   else if(type.eq."N0Q")then
+      ref    := radfiles[:]->BaseReflectivityDR
+   end if
+   end if
    azi    := radfiles[:]->azimuth
    gate   := radfiles[:]->gate
    radlats := radfiles[:]->latitude
@@ -113,11 +128,15 @@ do i=0,nhailfiles-1
    outsubdir = outdir+"/"+hailfilename+"/"
    system("mkdir "+outsubdir)
 
+   ;Clear memory by deleting radfiles
+   delete(radfiles)
+
    ;Loop through all CYGNSS times and plot radar image for each specular point
    ncygtimes = dimsizes(cygtimes)
    do j=0,ncygtimes-1
       unixj = j + 1
-      radind = minind(abs(cygtimes(j)-radtimes))
+      cygtimeint = round(cygtimes(j),3)
+      radind = minind(abs(cygtimeint-radtimes))
       ctrlat = radlats(radind,0)
       ctrlon = radlons(radind,0)
       reflectivity := ref(radind,:,:)
@@ -172,22 +191,22 @@ do i=0,nhailfiles-1
       delete(reflectivity@units)
 
       ;Get minimum and maximum lat/lons for plot
-      radfile = radfiles[radind]
-      minlat  = radfile@geospatial_lat_min
-      minlon  = radfile@geospatial_lon_min
-      maxlat  = radfile@geospatial_lat_max
-      maxlon  = radfile@geospatial_lon_max
+      ;radfile = radfiles[radind]
+      ;minlat  = radfile@geospatial_lat_min
+      ;minlon  = radfile@geospatial_lon_min
+      ;maxlat  = radfile@geospatial_lat_max
+      ;maxlon  = radfile@geospatial_lon_max
       ;There is an error in at least some radar files that makes the
       ;minimum longitude larger than the maximum longitude. If this
       ;is the case, switch minlon and maxlon
-      if(minlon.gt.maxlon)then
-         minlontemp = minlon
-         minlon = maxlon
-         maxlon = minlontemp
-      end if
+      ;if(minlon.gt.maxlon)then
+      ;   minlontemp = minlon
+      ;   minlon = maxlon
+      ;   maxlon = minlontemp
+      ;end if
 
       ;Draw the plot
-      outfilename = outsubdir+unixj+".png"
+      outfilename = outsubdir+tostring(cygtimeint)+".png"
       print( "Writing image to "+outfilename)
       wks = gsn_open_wks("png",outfilename)
       setvalues wks
@@ -209,7 +228,10 @@ do i=0,nhailfiles-1
       res@cnLevels = ispan(-10,80,1)
    ;   res@cnRasterSmoothingOn = "True"
       res@cnFillDrawOrder = "PreDraw"
-      res@tiMainOn = False
+      res@tiMainOn = True
+      res@tiMainString = report
+      res@tiMainFontHeightF = 0.008
+      res@tiMainFontColor = "white"
       res@tiXAxisOn = False
 ;      res@trYMinF = minlat
 ;      res@trYMaxF = maxlat
@@ -256,18 +278,18 @@ do i=0,nhailfiles-1
       mapres@mpOutlineDrawOrder     = "Draw"
       mapres@mpFillDrawOrder        = "PreDraw"
       mapres@mpLimitMode            = "LatLon"
-      mapres@mpMinLatF              =  minlat
-      mapres@mpMaxLatF              =  maxlat
-      mapres@mpMinLonF              =  minlon
-      mapres@mpMaxLonF              =  maxlon
+      mapres@mpMinLatF              =  min(cyglat)-0.5
+      mapres@mpMaxLatF              =  max(cyglat)+0.5
+      mapres@mpMinLonF              =  min(cyglon)-0.5
+      mapres@mpMaxLonF              =  max(cyglon)+0.5
       mapres@tiMainOn               = False
       mapres@tiXAxisOn              = False
-      mapres@gsnLeftString = "Specular Point Time: "+MM(j)+"/"+DD(j)+"/"+YYYY(j)+" "+HH(j)+":"+mm(j)+":"+ss(j)
-      mapres@gsnLeftStringFontHeightF = 0.01
+      mapres@gsnLeftString = "Specular Point Time: "+MM(j)+"/"+DD(j)+"/"+YYYY(j)+" "+HH(j)+":"+mm(j)+":"+ss(j)+"  "+satnum(j)
+      mapres@gsnLeftStringFontHeightF = 0.008
       mapres@gsnLeftStringOrthogonalPosF = -0.003
       mapres@gsnLeftStringFontColor = "white"
-      mapres@gsnRightString = stn+" Radar Time: "+raddattimstring(j)
-      mapres@gsnRightStringFontHeightF = 0.01
+      mapres@gsnRightString = stn+" Radar Time: "+raddattimstring(radind)
+      mapres@gsnRightStringFontHeightF = 0.008
       mapres@gsnRightStringOrthogonalPosF = 0.002
       mapres@gsnRightStringFontColor = "white"
       mapres@gsnMaximize = True
@@ -279,6 +301,23 @@ do i=0,nhailfiles-1
       map     = gsn_csm_map(wks,mapres)
       contour = gsn_csm_contour(wks,reflectivity,res)
       overlay(map,contour)
+
+      ;Attach hail report location
+      pmres = True
+      pmres@gsMarkerSizeF = 20
+      pmres@gsMarkerThicknessF = 20
+      pmres@gsMarkerIndex = 8
+      pmres@gsMarkerColor = "green"
+      dum1 = gsn_add_polymarker(wks,map,haillon,haillat,pmres)
+      
+      ;Attach CYGNSS specular points
+      pmres@gsMarkerSizeF = 9
+      pmres@gsMarkerThicknessF = 20
+      pmres@gsMarkerIndex = 1
+      pmres@gsMarkerColor = "cyan"
+      dum2 := gsn_add_polymarker(wks,map,cyglon,cyglat,pmres)
+      pmres@gsMarkerColor = "blue"
+      dum3 := gsn_add_polymarker(wks,map,cyglon(j),cyglat(j),pmres)
       draw(map)
       frame(wks)
    end do

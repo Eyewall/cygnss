@@ -1,8 +1,12 @@
 ;Set CYGNSS file to use and output directory
-cygdir = "/jm13/pduran/cygnss/2017/level1/"
+cygdir = "/jm13/pduran/cygnss/2018/level1/"
+outdir  = "/jm13/pduran/web/cygnss/ddm/analog-power/"
 ;cygfilename  = "cyg01.ddmi.s20180319-000000-e20180319-235959.l1.power-brcs.a20.d20.nc"
-cygfilename  = "cyg01.ddmi.s20170512-000000-e20170512-235959.l1.power-brcs.a20.d20.nc"
-outdir  = "/jm13/pduran/web/cygnss/ddm/analog-power/miami2/"
+;cygfilename  = "cyg01.ddmi.s20170512-000000-e20170512-235959.l1.power-brcs.a20.d20.nc"
+cygfilename  = "cyg07.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
+hailfilename = "180310_rpts_raw_hail.csv_01"
+mintime = 69154247
+maxtime = 69154262
 toplot = 1 ;0=Bistatic radar cross section; 1=Analog power; 2=Effective scattering area
 ;Ignore Block IIF satellites?
 ignoreblockIIF = True
@@ -11,8 +15,7 @@ ignoreblockIIF = True
 ;MIAMI
 ;mintime = 69832686
 ;maxtime = 69832751
-mintime = 42998043
-maxtime = 42998109
+
 ;MOUNT EVEREST
 ;mintime = 69872248
 ;maxtime = 69872272
@@ -148,10 +151,13 @@ do time=mintime,maxtime
    brcsvals&delay = delays
    brcsvals&doppler = doppler/1000. ;Convert to kHz
    printMinMax(delays,0)
-;   ;Plot the DDM!
-   filename = outdir+"/"+tostring(ctime(mindistind))+".png"
+
+   ;Plot the DDM!
+   outsubdir = outdir+"/"+hailfilename+"/"
+   system("mkdir "+outsubdir)
+   filename = outsubdir+"/"+tostring(ctime(mindistind))+".png"
+   print( "Writing image to output file "+filename)
    wks = gsn_open_wks("png",filename)
-;   gsn_define_colormap(wks,"BlGrYeOrReVi200")
    gsn_define_colormap(wks,"MPL_Blues")
    res = True
    res@cnFillMode = "RasterFill"
