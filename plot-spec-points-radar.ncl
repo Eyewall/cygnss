@@ -88,7 +88,6 @@ do i=0,nhailfiles-1
 
    ;Add all radar files from this station
    filelist := systemfunc("ls "+raddir+stn+"/*nc")
-   print( filelist)
    radfiles  = addfiles(filelist,"r")
    ListSetType(radfiles,"join")
 
@@ -105,9 +104,9 @@ do i=0,nhailfiles-1
    ;Read values from NEXRAD files
    type   := radfiles[0]@keywords_vocabulary
    if(type.eq."N0R")then
-      ref    := radfiles[:]->BaseReflectivity
+      ref = radfiles[:]->BaseReflectivity
    else if(type.eq."N0Q")then
-      ref    := radfiles[:]->BaseReflectivityDR
+      ref = radfiles[:]->BaseReflectivityDR
    end if
    end if
    azi    := radfiles[:]->azimuth
@@ -321,4 +320,5 @@ do i=0,nhailfiles-1
       draw(map)
       frame(wks)
    end do
+   delete(ref)
 end do
