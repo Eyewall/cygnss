@@ -17,14 +17,13 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 ; within a user-defined radius of the storm center.
 ;---------------------------------------------
 
-datalevel   = 1
-trakfile    = "/jm13/pduran/best-tracks/hurdat2-2018.txt"
-cygdir      = "/jm13/pduran/cygnss/2018/level"+datalevel+"/"
-cygtimefile = "/jm13/pduran/cygnss/2018/level"+datalevel+"/cygtimes.txt"
-stormdir    = "/jm13/pduran/cygnss/2018/stormfiles/"
+datalevel   = 2
+trakfile    = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
+cygdir      = "/jm13/pduran/cygnss/2017/level"+datalevel+"/"
+cygtimefile = "/jm13/pduran/cygnss/2017/level"+datalevel+"/cygtimes.txt"
+stormdir    = "/jm13/pduran/cygnss/2017/stormfiles/"
 searchradius= 300  ;Units km
 ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
-
 
 ;--------------------------------------;
 ;GET LIST OF AVAILABLE CYGNSS FILES AND;
@@ -33,39 +32,38 @@ ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
 ;THIS ONLY NEEDS TO BE DONE ONCE FOR   ;
 ;EVERY CYGNSS DIRECTORY.               ;
 ;--------------------------------------;
-timeunits= "seconds since 2016-1-1 00:00:00"
-cygfilelist = systemfunc("ls "+cygdir+"*nc")
-ncygfiles = dimsizes(cygfilelist)
-mintimes = new(ncygfiles,"integer")
-maxtimes = new(ncygfiles,"integer")
-do i=0,ncygfiles-1
-   unixi = i + 1
-   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
-   cygfile   = addfile(cygfilelist(i),"r")
-   if(datalevel.eq.1)then
-      cygtimes := cygfile->ddm_timestamp_utc
-   else if(datalevel.eq.2)then
-      cygtimes := cygfile->sample_time
-   end if
-   end if
-   ;Convert observation times of each file to a common unit
-   cygtimes_convert := round(cd_convert(cygtimes,timeunits),3)
-   mintimes(i) = min(cygtimes_convert)
-   maxtimes(i) = max(cygtimes_convert)
-end do
-;Write to output file
-header = [/"Time units: '"+timeunits+"'"/]
-header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
-outlist = [/cygfilelist,mintimes,maxtimes/]
-write_table(cygtimefile,"w",header,"%s")
-write_table(cygtimefile,"a",header2,"%s")
-write_table(cygtimefile,"a",outlist,"%s%09i%09i")
-print( "Output written to "+cygtimefile)
-exit
-
-;------------------------------------------------;
-;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;
-;------------------------------------------------;
+;timeunits= "seconds since 2016-1-1 00:00:00"
+;cygfilelist = systemfunc("ls "+cygdir+"*nc")
+;ncygfiles = dimsizes(cygfilelist)
+;mintimes = new(ncygfiles,"integer")
+;maxtimes = new(ncygfiles,"integer")
+;do i=0,ncygfiles-1
+;   unixi = i + 1
+;   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
+;   cygfile   = addfile(cygfilelist(i),"r")
+;   if(datalevel.eq.1)then
+;      cygtimes := cygfile->ddm_timestamp_utc
+;   else if(datalevel.eq.2)then
+;      cygtimes := cygfile->sample_time
+;   end if
+;   end if
+;   ;Convert observation times of each file to a common unit
+;   cygtimes_convert := round(cd_convert(cygtimes,timeunits),3)
+;   mintimes(i) = min(cygtimes_convert)
+;   maxtimes(i) = max(cygtimes_convert)
+;end do
+;;Write to output file
+;header = [/"Time units: '"+timeunits+"'"/]
+;header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
+;outlist = [/cygfilelist,mintimes,maxtimes/]
+;write_table(cygtimefile,"w",header,"%s")
+;write_table(cygtimefile,"a",header2,"%s")
+;write_table(cygtimefile,"a",outlist,"%s%09i%09i")
+;print( "Output written to "+cygtimefile)
+;
+;;------------------------------------------------;
+;;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;
+;;------------------------------------------------;
 timeunits    = systemfunc("sed -n 1p "+cygtimefile+" | awk -F\' '{print $2}'")
 cygfilenames = systemfunc("cat "+cygtimefile+" | sed '1,2d' | awk '{print $1}'")
 cygmintimes  = toint(systemfunc("cat "+cygtimefile+" | sed '1,2d' | awk '{print $2}'"))
@@ -81,7 +79,6 @@ system("awk 'NF==3{print}{}' "+trakfile+" > stormlist.tmp")
 nstorms    = toint(systemfunc("wc stormlist.tmp | awk '{print $1}'"))
 stormids   = systemfunc("awk '{print $1}' stormlist.tmp | sed 's/,//g'")
 stormnames = systemfunc("awk '{print $2}' stormlist.tmp | sed 's/,//g'")
-print( stormnames)
 
 ;Loop through all storms
 do i=0,nstorms-1
@@ -111,21 +108,21 @@ do i=0,nstorms-1
    lat := where(norslat.eq."S",lat*-1,lat)
    lon := where(eorwlon.eq."W",lon*-1,lon)
    ;Get intensity estimates
-   vmax    := tofloat(systemfunc("awk -F ',' '{print $7}' currentstorm.tmp"))
-   pmin    := tofloat(systemfunc("awk -F ',' '{print $8}' currentstorm.tmp"))
+   vmax    := toshort(systemfunc("awk -F ',' '{print $7}' currentstorm.tmp"))
+   pmin    := toshort(systemfunc("awk -F ',' '{print $8}' currentstorm.tmp"))
    ;Get wind radii
-   r34ne   := tofloat(systemfunc("awk -F ',' '{print $9}' currentstorm.tmp"))
-   r34se   := tofloat(systemfunc("awk -F ',' '{print $10}' currentstorm.tmp"))
-   r34sw   := tofloat(systemfunc("awk -F ',' '{print $11}' currentstorm.tmp"))
-   r34nw   := tofloat(systemfunc("awk -F ',' '{print $12}' currentstorm.tmp"))
-   r50ne   := tofloat(systemfunc("awk -F ',' '{print $13}' currentstorm.tmp"))
-   r50se   := tofloat(systemfunc("awk -F ',' '{print $14}' currentstorm.tmp"))
-   r50sw   := tofloat(systemfunc("awk -F ',' '{print $15}' currentstorm.tmp"))
-   r50nw   := tofloat(systemfunc("awk -F ',' '{print $16}' currentstorm.tmp"))
-   r64ne   := tofloat(systemfunc("awk -F ',' '{print $17}' currentstorm.tmp"))
-   r64se   := tofloat(systemfunc("awk -F ',' '{print $18}' currentstorm.tmp"))
-   r64sw   := tofloat(systemfunc("awk -F ',' '{print $19}' currentstorm.tmp"))
-   r64nw   := tofloat(systemfunc("awk -F ',' '{print $20}' currentstorm.tmp"))
+   r34ne   := toshort(systemfunc("awk -F ',' '{print $9}' currentstorm.tmp"))
+   r34se   := toshort(systemfunc("awk -F ',' '{print $10}' currentstorm.tmp"))
+   r34sw   := toshort(systemfunc("awk -F ',' '{print $11}' currentstorm.tmp"))
+   r34nw   := toshort(systemfunc("awk -F ',' '{print $12}' currentstorm.tmp"))
+   r50ne   := toshort(systemfunc("awk -F ',' '{print $13}' currentstorm.tmp"))
+   r50se   := toshort(systemfunc("awk -F ',' '{print $14}' currentstorm.tmp"))
+   r50sw   := toshort(systemfunc("awk -F ',' '{print $15}' currentstorm.tmp"))
+   r50nw   := toshort(systemfunc("awk -F ',' '{print $16}' currentstorm.tmp"))
+   r64ne   := toshort(systemfunc("awk -F ',' '{print $17}' currentstorm.tmp"))
+   r64se   := toshort(systemfunc("awk -F ',' '{print $18}' currentstorm.tmp"))
+   r64sw   := toshort(systemfunc("awk -F ',' '{print $19}' currentstorm.tmp"))
+   r64nw   := toshort(systemfunc("awk -F ',' '{print $20}' currentstorm.tmp"))
 
    ;-----------------------------;
    ;CONVERT DATES/TIMES FROM BEST; 
@@ -134,6 +131,7 @@ do i=0,nstorms-1
    trakcygtime := cd_inv_calendar(yyyy,mm,dd,hour,minu,conform(yyyy,0,-1),timeunits,0)
    trakcygtime@long_name = "Time of the best-track entry"
    trakcygtime!0 = "tracktime"
+
    ;-----------------------------------------;
    ;LOOP THROUGH ALL BEST-TRACK TIMES FOR THE;
    ;CURRENT STORM AND FIND CYGNSS FILE THAT  ;
@@ -206,6 +204,43 @@ do i=0,nstorms-1
 
       time@long_name = "Time of CYGNSS retrieval"
    end do
+
+   ;--------------------------------;
+   ;DEFINE ATTRIBUTES FOR STORM DATA;
+   ;--------------------------------;
+   lat@long_name = "Latitude of storm center"
+   lat@units  = "degrees_north"
+   lon@long_name = "Longitude of storm center"
+   lon@units  = "degres_east"
+   vmax@long_name = "Maximum 10-m wind speed within storm"
+   vmax@units = "kt"
+   pmin@long_name = "Minimum sea-level pressure within storm"
+   pmin@units = "hPa"
+   r34ne@long_name = "Maximum radius of 34-kt winds in NE quadrant"
+   r34ne@units = "nautical miles"
+   r34se@long_name = "Maximum radius of 34-kt winds in SE quadrant"
+   r34se@units = "nautical miles"
+   r34sw@long_name = "Maximum radius of 34-kt winds in SW quadrant"
+   r34sw@units = "nautical miles"
+   r34nw@long_name = "Maximum radius of 34-kt winds in NW quadrant"
+   r34nw@units = "nautical miles"
+   r50ne@long_name = "Maximum radius of 50-kt winds in NE quadrant"
+   r50ne@units = "nautical miles"
+   r50se@long_name = "Maximum radius of 50-kt winds in SE quadrant"
+   r50se@units = "nautical miles"
+   r50sw@long_name = "Maximum radius of 50-kt winds in SW quadrant"
+   r50sw@units = "nautical miles"
+   r50nw@long_name = "Maximum radius of 50-kt winds in NW quadrant"
+   r50nw@units = "nautical miles"
+   r64ne@long_name = "Maximum radius of 64-kt winds in NE quadrant"
+   r64ne@units = "nautical miles"
+   r64se@long_name = "Maximum radius of 64-kt winds in SE quadrant"
+   r64se@units = "nautical miles"
+   r64sw@long_name = "Maximum radius of 64-kt winds in SW quadrant"
+   r64sw@units = "nautical miles"
+   r64nw@long_name = "Maximum radius of 64-kt winds in NW quadrant"
+   r64nw@units = "nautical miles"
+
    ;--------------------------------------------------;
    ;WRITE NETCDF FILE FOR THIS STORM AND SEARCH RADIUS;
    ;--------------------------------------------------;
@@ -227,12 +262,12 @@ do i=0,nstorms-1
    fileatts@trackfile = trakfile
    fileatts@ignoreBlockIIF = ignoreblockIIF
    fileattdef(fout,fileatts)
-   ;Define variable attributes
-   dimNames = (/"tracktime","cygtime"/)
-   dimSizes = (/ntimes,10000/)
-   dimUnlim = (/False,False/)
-   var_names = (/"v","lat","lon"/)
-   var_types = (/"float","float","float"/)
+   ;Write CYGNSS output
+   dimNames := (/"tracktime","cygtime"/)
+   dimSizes := (/ntimes,10000/)
+   dimUnlim := (/False,False/)
+   var_names := (/"v","lat","lon"/)
+   var_types := (/"float","float","float"/)
    filedimdef(fout,dimNames,dimSizes,dimUnlim)
    filevardef(fout,"tracktime",typeof(trakcygtime),getvardims(trakcygtime))
    filevardef(fout,"cygtime",typeof(time),getvardims(time))
@@ -242,10 +277,55 @@ do i=0,nstorms-1
    filevarattdef(fout,"v",v)
    filevarattdef(fout,"lat",lats)
    filevarattdef(fout,"lon",lons)
-   ;Write variables to netCDF file
    fout->tracktime = (/traktime/)
    fout->cygtime   = (/time/)
    fout->v         = (/v/)
    fout->lat       = (/lats/)
    fout->lon       = (/lons/)
+   ;Write storm info
+   dimNames := (/"tracktime"/)
+   dimSizes := (/ntimes/)
+   dimUnlim := (/False/)
+   var_names := (/"stormlat","stormlon","vmax","pmin",\
+                 "r34ne","r34se","r34sw","r34nw",\
+                 "r50ne","r50se","r50sw","r50nw",\
+                 "r64ne","r64se","r64sw","r64nw"/)
+   var_types := (/"float","float","short","short",\
+                 "short","short","short","short",\
+                 "short","short","short","short",\
+                 "short","short","short","short"/)
+   filedimdef(fout,dimNames,dimSizes,dimUnlim)
+   filevardef(fout,var_names,var_types,dimNames)
+   filevarattdef(fout,"stormlat",lat)
+   filevarattdef(fout,"stormlon",lon)
+   filevarattdef(fout,"vmax",vmax)
+   filevarattdef(fout,"pmin",pmin)
+   filevarattdef(fout,"r34ne",r34ne)
+   filevarattdef(fout,"r34se",r34se)
+   filevarattdef(fout,"r34sw",r34sw)
+   filevarattdef(fout,"r34nw",r34nw)
+   filevarattdef(fout,"r50ne",r50ne)
+   filevarattdef(fout,"r50se",r50se)
+   filevarattdef(fout,"r50sw",r50sw)
+   filevarattdef(fout,"r50nw",r50nw)
+   filevarattdef(fout,"r64ne",r64ne)
+   filevarattdef(fout,"r64se",r64se)
+   filevarattdef(fout,"r64sw",r64sw)
+   filevarattdef(fout,"r64nw",r64nw)
+   fout->stormlat  = (/lat/)
+   fout->stormlon  = (/lon/) 
+   fout->vmax      = (/vmax/)
+   fout->pmin      = (/pmin/)
+   fout->r34ne     = (/r34ne/)
+   fout->r34se     = (/r34se/)
+   fout->r34sw     = (/r34sw/)
+   fout->r34nw     = (/r34nw/)
+   fout->r50ne     = (/r50ne/)
+   fout->r50se     = (/r50se/)
+   fout->r50sw     = (/r50sw/)
+   fout->r50nw     = (/r50nw/)
+   fout->r64ne     = (/r64ne/)
+   fout->r64se     = (/r64se/)
+   fout->r64sw     = (/r64sw/)
+   fout->r64nw     = (/r64nw/)
 end do
