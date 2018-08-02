@@ -3,17 +3,24 @@ cygdir = "/jm13/pduran/cygnss/2018/level1/"
 outdir  = "/jm13/pduran/web/cygnss/ddm/analog-power/"
 ;cygfilename  = "cyg01.ddmi.s20170512-000000-e20170512-235959.l1.power-brcs.a20.d20.nc"
 ;cygfilename  = "cyg01.ddmi.s20180319-000000-e20180319-235959.l1.power-brcs.a20.d20.nc"
-;cygfilename  = "cyg03.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
-;cygfilename = "cyg06.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
+
 ;cygfilename = "cyg04.ddmi.s20180406-000000-e20180406-235959.l1.power-brcs.a20.d20.nc"
 ;cygfilename = "cyg03.ddmi.s20180406-000000-e20180406-235959.l1.power-brcs.a20.d20.nc"
 ;cygfilename = "cyg05.ddmi.s20180406-000000-e20180406-235959.l1.power-brcs.a20.d20.nc"
 ;cygfilename = "cyg07.ddmi.s20180406-000000-e20180406-235959.l1.power-brcs.a20.d20.nc"
 ;cygfilename = "cyg04.ddmi.s20180413-000000-e20180413-235959.l1.power-brcs.a20.d20.nc"
-cygfilename = "cyg03.ddmi.s20180413-000000-e20180413-235959.l1.power-brcs.a20.d20.nc"
-hailfilename = "180413_rpts_raw_hail.csv_05"
-mintime = 72047655
-maxtime = 72047670
+;cygfilename = "cyg03.ddmi.s20180413-000000-e20180413-235959.l1.power-brcs.a20.d20.nc"
+cygfilename  = "cyg03.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
+;cygfilename = "cyg06.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
+;cygfilename  = "cyg07.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
+hailfilename = "180310_rpts_raw_hail.csv_01"
+;Can find these values in the filenames contained within /jm13/pduran/web/cygnss/specpointmaps/*/
+;mintime = 69154247
+;maxtime = 69154262
+mintime = 69153766
+maxtime = 69153773
+lat = 32.51
+lon = -94.72
 toplot = 1 ;0=Bistatic radar cross section; 1=Analog power; 2=Effective scattering area
 ;Ignore Block IIF satellites?
 ignoreblockIIF = True
@@ -29,8 +36,8 @@ ignoreblockIIF = True
 timeunits = "seconds since 2016-1-1 00:00:00"
 ;Set the location of interest
 ;MIAMI
-lat = 25.78
-lon = -80.19
+;lat = 25.78
+;lon = -80.19
 ;MOUNT EVEREST
 ;lat = 27.9881
 ;lon = 86.9250
@@ -94,6 +101,9 @@ qcflags1d  = ndtooned(qcflags)
 ctime1d@units = cygtime@units
 delete([/ctime_conform,cyglat,cyglon,spdelayrow,spdoppcol,spdelay,spdopp/])
 
+;Get error conditions
+errorstrings = systemfunc("cat /nfs/jm13/pduran/cygnss/errorconditions.txt")
+
 ;Convert CYGNSS time to common units
 ctime = round(cd_convert(ctime1d,timeunits),3)
 
@@ -125,6 +135,18 @@ do time=mintime,maxtime
    brcs_conform := reshape(brcs,(/dimsizes(ctime),17,11/))
    ;Get appropriate BRCS for this sample time and DDM index
    brcsvals := brcs_conform(mindistind,:,:)
+   ;Get error flags and error strings for this DDM
+   qcflag = qcflags1d(mindistind)
+   print( qcflag)
+   bitmask= getbitsone(qcflag)
+   print( bitmask)
+   ;Reverse bitmask array so we can compare it to errorstrings
+   bitmaskrev = bitmask(0,::-1)
+   errorinds := ind(bitmaskrev.eq.1)
+   if(.not.all(ismissing(errorinds)))then
+      errors := errorstrings(errorinds)
+   end if
+
    ;Get delay and doppler values for this DDM
    delays  = new(17,"float")
    doppler = new(11,"float")
@@ -133,16 +155,16 @@ do time=mintime,maxtime
    ;Set the delay and Doppler at the specular point
    thisspdelayrow = spdelayrow1d(mindistind)
    thisspdoppcol  = spdoppcol1d (mindistind)
-   print( qcflags1d(mindistind))
-   if(qcflags1d(mindistind).eq.262144.or.qcflags1d(mindistind).eq.524288)then
-      print( "Specular point delay row and/or Doppler column out of range!")
-      continue  ;The specular point delay row and/orr Doppler
-   end if       ;column are out of range of the arrays!
-   if(thisspdelayrow.lt.4.or.thisspdoppcol.lt.4.or.\
-      thisspdelayrow.gt.8.or.thisspdoppcol.gt.6)then
-      print( "Specular point delay row and/or Doppler column out of range!")
-      continue
-   end if
+
+;   if(qcflags1d(mindistind).eq.262144.or.qcflags1d(mindistind).eq.524288)then
+;      print( "Specular point delay row and/or Doppler column out of range!")
+;;      continue  ;The specular point delay row and/orr Doppler
+;   end if       ;column are out of range of the arrays!
+;   if(thisspdelayrow.lt.4.or.thisspdoppcol.lt.4.or.\
+;      thisspdelayrow.gt.8.or.thisspdoppcol.gt.6)then
+;      print( "Specular point delay row and/or Doppler column out of range!")
+;;      continue
+;   end if
    print( thisspdelayrow)
    print( mindistind)
    delays (thisspdelayrow) = spdelay1d(mindistind)
@@ -209,5 +231,41 @@ do time=mintime,maxtime
    res@cnInfoLabelOn = False
    res@cnLineLabelsOn = False
    res@gsnMaximize = True
+   res@gsnDraw = False
+   res@gsnFrame = False
    plot = gsn_csm_contour(wks,brcsvals,res)
+
+   ;Add specular point location and text lat,lon and error conditions
+   polyres = True
+   polyres@gsMarkerSizeF = 100
+   polyres@gsMarkerColor = "red"
+   polyres@gsMarkerIndex = 1
+   dum = gsn_add_polymarker(wks,plot,spdopp1d(mindistind)/1000.,spdelay1d(mindistind),polyres)
+   txres = True
+   txres@txFontHeightF = 0.015
+   txres@txFontColor = "red"
+   txres@txJust = "TopLeft"
+   draw(plot)
+
+   ;Specular point
+   text = "Specular Point Location: "+tostring(cyglat1d(mindistind))+", "+tostring(cyglon1d(mindistind))
+;   txx  = -2.45
+;   txy  = 1.0
+   txx = 0.17
+   txy = 0.86
+   gsn_text_ndc(wks,text,txx,txy,txres)
+   if(.not.all(ismissing(errorinds)))
+      ;Error conditions
+      text := errors
+   ;   txx  := conform(text,-2.45,-1)
+   ;   txy  := conform(text,0.9,-1)
+      txx  := conform(text,0.17,-1)
+      txy  := conform(text,0.84,-1)
+      do k=0,dimsizes(txy)-1
+   ;      txy(k) = txy(k)-k*0.12
+         txy(k) = txy(k)-k*0.02
+      end do
+      gsn_text_ndc(wks,text,txx,txy,txres)
+   end if
+   frame(wks)
 end do   ;Loop through each time
