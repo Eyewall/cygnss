@@ -17,7 +17,7 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 ; within a user-defined radius of the storm center.
 ;---------------------------------------------
 
-interpolate = 1   ;0=Do not interpolate best track; 1=Interpolate best track
+interpolate = 0   ;0=Do not interpolate best track; 1=Interpolate best track
 dt          = 18000  ;Time spacing to interpolate best track to (seconds)
 datalevel   = 2
 trakfile    = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
@@ -244,6 +244,14 @@ do i=0,nstorms-1
       lons(j,:ninds-1) = cyglon(indices)
    end do
 
+   time!0 = "tracktime"
+   time!1 = "cygtime"
+   time&tracktime = trakcygtime
+   time&cygtime = time(0,:)
+   copy_VarCoords(time,v)
+   copy_VarCoords(time,lats)
+   copy_VarCoords(time,lons)
+
    time@long_name = "Time of CYGNSS retrieval"
       
    if(interpolate.eq.1)then
@@ -268,6 +276,8 @@ do i=0,nstorms-1
    ;--------------------------------;
    ;DEFINE ATTRIBUTES FOR STORM DATA;
    ;--------------------------------;
+   trakcygtime@units = timeunits
+   time@units = timeunits
    lat@long_name = "Latitude of storm center"
    lat@units  = "degrees_north"
    lon@long_name = "Longitude of storm center"
@@ -315,11 +325,6 @@ do i=0,nstorms-1
    system("rm "+ncoutfile)
    fout = addfile(ncoutfile,"c")
    print( "Writing output file for "+stormnames(i)+" to "+ncoutfile)
-   ;Define coordinate variables
-   time!0 = "tracktime"
-   time!1 = "cygtime"
-   v!0    = "tracktime"
-   v!1    = "CYGNSS obs time"
    ;Define global attributes
    fileatts = True
    fileatts@CYGNSSversion= cygvers
