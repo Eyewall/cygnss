@@ -26,6 +26,8 @@ function azimuthal_avg(centerlat:numeric,centerlon:numeric,lats:numeric,lons:num
                        vals:numeric,maxrad:numeric,dr:numeric)
 begin
 
+pi = atan(1)*4
+
 ;Radial grid defining cutoffs for averages
 nrads = maxrad/dr
 radii = fspan(dr,maxrad,nrads)
@@ -39,6 +41,7 @@ Robs = gc_latlon(centerlat,centerlon,lats,lons,2,4)
 nobs        = new(dimsizes(radii),"float")
 avgs        = new(dimsizes(radii),"float")
 sigma       = new(dimsizes(radii),"float")
+obs_density = new(dimsizes(radii),"float")
 do i=0,dimsizes(radii)-1
    minrad = i*dr
    maxrad = (i+1)*dr
@@ -46,8 +49,16 @@ do i=0,dimsizes(radii)-1
    nobs(i)  = dimsizes(indices)
    avgs(i)  = avg(vals(indices))
    sigma(i) = stddev(vals(indices))
+   ;Compute observation density
+   A_outer = pi*maxrad^2
+   A_inner = pi*minrad^2
+   A_bin = A_outer - A_inner
+   obs_density(i) = nobs(i)/A_bin
 end do
-avgs@num_obs = nobs
+avgs@radii = radout
 avgs@standard_deviation = sigma
+avgs@num_obs = nobs
+avgs@obs_density = obs_density
+avgs@comment = "obs_density = number of obs per square km in each radial bin"
 return(avgs)
 end

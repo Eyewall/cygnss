@@ -13,6 +13,11 @@
 ; V includes 1 meter vertical depth
 ;
 ; Integrate piecewise between each radius, assuming axisymmetry.
+;
+;ARGUMENTS
+;---------
+;winds: Wind speeds (m/s)
+;radii: Radii that corresponds to winds (km)
 ;------------------------------------------------
 
 undef("calc_ike")
