@@ -11,13 +11,13 @@
 ; the location of the storm center.
 ;------------------------------------------------
 
-NAME  = "LEE" 
-ID    = "201714L"
+NAME  = "IRMA"
+ID    = "201711L"
 
 YYYY = "2017"
 MM   = "09"
-DD   = "28"
-HH   = "00"
+DD   = "10"
+HH   = "06"
 mm   = "00"
 ss   = "00"
 radius = 300      ;Search radius (km)
@@ -25,7 +25,9 @@ dt = 60*60*3      ;Time within which to search (s)
 dthr = tostring(dt/3600)
 
 cygdir = "/jm13/pduran/cygnss/"+YYYY+"/level2/"
-outdir = "/jm13/pduran/web/cygnss/erc-cases/"+NAME+"-"+ID+"/"
+outdir = "/jm13/pduran/web/cygnss/erc-cases/maps/"+NAME+"-"+ID+"/"
+
+system("mkdir "+outdir)
 
 cygfilelist = systemfunc("cat "+cygdir+"cygtimes.txt | sed '1,3d' | awk '{print $1}'")
 cygmintimes = toint(systemfunc("cat "+cygdir+"cygtimes.txt | sed '1,3d' | awk '{print $2}'"))
@@ -96,6 +98,7 @@ vplot    = v(selectioninds)
 
 ;Plot locations of CYGNSS observations along the storm's entire track
 outfilename = outdir+"windspeed-"+YYYY+MM+DD+HH+mm+ss+"-"+radius+"km-"+dthr+"h.pdf"
+print( "Writing to outout file "+outfilename)
 mapwks = gsn_open_wks("pdf",outfilename)
 ;drawNDCGrid(mapwks)
 mapres = True

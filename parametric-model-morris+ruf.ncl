@@ -30,33 +30,33 @@
 ;       c6 = -0.5*f*cQ(1./b)
 ;       c7 = -0.5*F*cQ*cQ(1./b)
 ;       cQ = -sqrt(c2^2-4*c1*c3)
+;
+; ARGUMENTS
+; ---------
+; stormlat : Latitude of the storm center in decimal degrees North
+; basin    : Storm basin (e.g. "NATL","EPAC","WPAC"
+; v        : Observed wind speeds (m/s)
+; r        : Distance of the observed wind speeds from storm center (km)
+; nparams  : Number of free parameters in Morris+Ruf model (2 or 3)
 ;------------------------------------------------
 
-nparams = 2    ;Set to 2 or 3
+undef("MorrisRufModel")
+function MorrisRufModel(stormlat:numeric,basin:string,v:numeric,r:numeric,nparams:integer)
 
-;TO START WITH, USE A SET VALUE FOR THE CORIOLIS PARAMETER
-;EVENTUALLY WILL SET THIS TO THE VALUE AT THE STORM CENTER
-lat = 25.
-basin = "NATL"
+begin
+
 pi = atan(1) * 4
 km_to_m = 1000.
+kt_to_mps = 0.514444
+
+;Get r in meters
+r_m = r*km_to_m
+
 ;Coriolis parameter
-f = 2*7.292e-5*sin(lat*pi/180.)
- 
-;For now, assume Rankine vortex
-radii = fspan(1,1000,1000)*km_to_m
-winds = new(dimsizes(radii),"float")
-vmax =755.
-rmax = 50*km_to_m
-ind1 = ind(radii.lt.rmax)
-ind2 = ind(radii.ge.rmax)
-winds(ind1) = vmax*radii(ind1)/rmax
-winds(ind2) = vmax*(rmax/radii(ind2))^0.5
-;Robs = radii  ;Units m
-;Vobs = winds  ;Units m/s
+f = 2*7.292e-5*sin(stormlat*pi/180.)
  
 ;Per Morris & Ruf (July 2017, page 1851,1864), set initial R_limits
-;(which are basin-specific) and constrain Vmax.
+;(which are basin-specific).
 if(basin.eq."NATL".or.basin.eq."EPAC")then
    Rlimit = 200*km_to_m
 else
@@ -67,26 +67,41 @@ if(nparams.eq.2)then
    ;-----------------------------------------------------------;
    ;EXECUTE PARAMETRIC WIND MODEL (MORRIS AND RUF, JANUARY 2017;
    ;-----------------------------------------------------------;
-   vmin = 0.     ;Minimum Vmax to test
-   vmax = 100.   ;Maximum Vmax to test
-   rmin = 0.     ;Minimum Rmax to test (km)
-   rlimit = 200.   ;Maximum Rmax to test (km)
-   dr   = 1.
-   dv   = 1.
+   ;We will loop over the two free parameters (Vmax and Rmax)
+   ;from between the values set below with the steps set below.
+   vmin = 0.       ;Minimum Vmax to test
+   vmax = 100.     ;Maximum Vmax to test
+   rmin = 0.       ;Minimum Rmax to test (km)
+   rlimit = 100.   ;Maximum Rmax to test (km)
+   dr   = 1.       ;Rmax step
+   dv   = 1.       ;Vmax step
    ;The i loop is here so that we can make rlimit and r34 computed by the
    ;parametric model converge. It will never loop through all 100
    ;iterations because we will break it before then.
    do i=0,99
+      ;Set the radii of the parametric model
+      Rparam := fspan(1,toint(Rlimit),toint(Rlimit))
       nrads = toint((rlimit-rmin)/dr)
       nvmax = toint((vmax-vmin)/dv)
       costfunction = new((/nvmax,nrads/),"float")
       do Rmax=0,nrads-1
+         unixRmax = Rmax + 1
+;         print( "Computing cost function for Rmax "+unixRmax+" of "+nrads)
          Rmax_m = Rmax*km_to_m
          do Vmax=0,nvmax-1
-            Robs := radii(ind(radii.le.Rlimit))
-            Vobs := winds(ind(radii.le.Rlimit))
-            Vest := 2*Robs*(Rmax_m*Vmax+0.5*f*Rmax_m^2)/(Rmax_m^2+Robs^2)-0.5*f*Robs
-            costfunction(Vmax,Rmax) = sqrt(avg((Vest-Vobs)^2))
+            Robs := round(r_m(ind(r_m.le.Rlimit)),1)
+            Vobs := v(ind(r_m.le.Rlimit))
+            Vest := 2*Rparam*(Rmax_m*Vmax+0.5*f*Rmax_m^2)/(Rmax_m^2+Rparam^2)-0.5*f*Rparam
+            ;Get all of the indices where Robs=Rparam so that we can get arrays of
+            ;the same size. We only need to do this for the very first iteration of
+            ;Rmax, since the only time Robs can change is after the Rmax loop finishes.
+            if(Rmax.eq.0)then
+               diffinds := new(dimsizes(Vobs),integer)
+               do diffind=0,dimsizes(Vobs)-1
+                  diffinds(diffind) = ind(Rparam.eq.Robs(diffind))
+               end do
+            end if
+            costfunction(Vmax,Rmax) = sqrt(avg((Vest(diffinds)-Vobs)^2))
          end do
       end do
       ;Find Vmax and Rmax for which cost function is minimized
@@ -95,14 +110,14 @@ if(nparams.eq.2)then
       bestVmax = indices(0,0)
       bestRmax = indices(0,1)
       ;Compute radial wind profile using these values
-      Vest = 2*Robs*((bestRmax*km_to_m)*bestVmax+0.5*f*(bestRmax*km_to_m)^2)/((bestRmax*km_to_m)^2+Robs^2)-0.5*f*Robs
-      ;Determine r34. If it's close enough to rlimit, break out of the i loop and plot.
-      ;If it's not close enough to rlimit, set rlimit to r34 and recalculate.
+      Vest = 2*Rparam*((bestRmax*km_to_m)*bestVmax+0.5*f*(bestRmax*km_to_m)^2)/((bestRmax*km_to_m)^2+Rparam^2)-0.5*f*Rparam
+      ;Determine r34. If it's close enough to Rlimit, break out of the i loop and plot.
+      ;If it's not close enough to Rlimit, set Rlimit to r34 and recalculate.
       ;Get all indices outside of rmax
-      ind_outside_rmax := ind(Robs.ge.rmax)
-      V_outside_rmax := Vest(ind_outside_rmax)
-      r_outside_rmax := Robs(ind_outside_rmax)
-      r34 := r_outside_rmax(min(ind(V_outside_rmax.le.34)))
+      rmaxind = maxind(Vest)
+      Vest_outside_rmax := Vest(rmaxind:)
+      Rparam_outside_rmax := Rparam(rmaxind:)
+      r34 := Rparam_outside_rmax(minind(abs(Vest_outside_rmax-34*kt_to_mps)))
       diff := abs(Rlimit-r34)
       if(diff.ge.10000)then
          Rlimit = r34
@@ -118,12 +133,18 @@ if(nparams.eq.2)then
    res@tmYROn = False
    res@tmXTOn = False
    res@gsnMaximize = True
-   res@gsnLeftStringFontHeightF = .015
-   res@gsnLeftString = "Cost function minimized at V~B~max~N~ = "+bestVmax+\
-                       " m s~S~-1~N~, R~B~max~N~ = "+bestRmax+" km"
+   res@gsnLeftStringFontHeightF = .014
+   res@gsnLeftString = "Cost function (Minimized at V~B~max~N~ = "+bestVmax+\
+                       " m s~S~-1~N~, R~B~max~N~ = "+bestRmax+" km)"
    res@tiXAxisString = "Radius of maximum wind (km)"
    res@tiYAxisString = "Maximum wind speed (m s~S~-1~N~)"
    res@lbOrientation = "Vertical"
+   res@pmLabelBarWidthF = 0.05
+   res@lbLabelFontHeightF = 0.008
+   res@tiYAxisFontHeightF = 0.015
+   res@tiXAxisFontHeightF = 0.015
+   res@tmXBLabelFontHeightF = 0.015
+   res@tmYLLabelFontHeightF = 0.015
    res@gsnDraw = False
    res@gsnFrame = False
    plot = gsn_csm_contour(wks,costfunction,res)
@@ -137,18 +158,31 @@ if(nparams.eq.2)then
    wks2 = gsn_open_wks("png","/jm13/pduran/web/cygnss/parametric/2parametermodel.png")
    res2 = True
    res2@gsnMaximize = True
-   res2@gsnLeftString = "Rankine vortex (dots) and 2-parameter parameteric wind profile (line)"
+   res2@gsnLeftString = "CYGNSS observations (dots) and 2-parameter modeled wind profile (line)"
    res2@gsnLeftStringFontHeightF = 0.014
    res2@xyMarkLineMode = "Markers"
    res2@xyMarkers = 1
    res2@xyMarkerColor = "black"
    res2@xyMarkerSizeF = 0.015
-   res2@tiYAxisString = "Wind speed (kt)"
+   res2@tiYAxisString = "Wind speed (m s~S~-1~N~)"
    res2@tiXAxisString = "Radius (km)"
    res2@tiYAxisFontHeightF = 0.015
    res2@tiXAxisFontHeightF = 0.015
    res2@tmXBLabelFontHeightF = 0.015
    res2@tmYLLabelFontHeightF = 0.015
+   res2@tmYLMode = "Manual"
+   res2@tmYLTickStartF = 0.
+   res2@tmYLTickEndF = 100.
+   res2@tmYLTickSpacingF = 5.
+   res2@tmYLMinorOn = False
+   res2@trXMinF = 0.
+   if(basin.eq."NATL".or.basin.eq."EPAC")then
+      res2@trXMaxF = 200. 
+   else
+      res2@trXMaxF = 300.
+   end if
+   res2@trYMinF = 0.
+   res2@trYMaxF = max((/max(Vobs),max(Vest)/))
    res2@tmYROn = False
 ;   res2@tmXTOn = False
    res2@gsnDraw = False
@@ -157,7 +191,7 @@ if(nparams.eq.2)then
    lineres2 = True
    lineres2@gsLineColor = "blue"
    lineres2@gsLineThicknessF = 5
-   gsn_polyline(wks2,plot2,Robs/km_to_m,Vest,lineres2)
+   gsn_polyline(wks2,plot2,Rparam/km_to_m,Vest,lineres2)
    draw(plot2)
    frame(wks2)
 else
@@ -239,7 +273,6 @@ else
       c2 = -f*rmax^2-2*rmax*vmax*(b-1)-f*rmax*(b-1)
       c3 = -0.5*f*rmax^4+2*rmax^3*vmax+f*rmax^4
       cQ = (-c2-sqrt(c2^2-4*c1*c3))/(2*c1)
-   ;   cQ = -sqrt(c2^2-4*c1*c3)
       c4 = 2*rmax*vmax*cQ^(1./b)
       c5 = f*rmax^2*cQ^(1./b)
       c6 = -0.5*f*cQ^(1./b)
@@ -275,13 +308,14 @@ else
       wks = gsn_open_wks("png","/jm13/pduran/web/cygnss/parametric/"+unixi+".png")
       res = True
       res@gsnMaximize = True
-      res@gsnLeftString = "Rankine vortex (dots) and parameteric wind profile (line) for iteration "+unixi
+      res@gsnLeftString = "CYGNSS observations (dots) and parameteric wind profile (line) for iteration "+unixi
       res@gsnLeftStringFontHeightF = 0.014
       res@xyMarkLineMode = "Markers"
       res@xyMarkers = 1
       res@xyMarkerColor = "black"
       res@xyMarkerSizeF = 0.015
-      res@tiYAxisString = "Wind speed (kt)"
+      res@tiYAxisString = "Wind speed (m s~S~-1~N~)"
+;Get r in meters
       res@tiXAxisString = "Radius (km)"
       res@tiYAxisFontHeightF = 0.015
       res@tiXAxisFontHeightF = 0.015
@@ -298,8 +332,16 @@ else
       print( vmax)
       print( rmax)
       print( b)
-      gsn_polyline(wks,plot,Robs/km_to_m,Vest,lineres)
+      gsn_polyline(wks,plot,Rparam/km_to_m,Vest,lineres)
       draw(plot)
       frame(wks)
+      ;Return the parametric wind profile
+      print( Vest)
    end do
 end if
+
+;Return wind profile
+Vest!0 = "radius"
+Vest&radius = Rparam/km_to_m
+return(Vest)
+end
