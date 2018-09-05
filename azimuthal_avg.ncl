@@ -46,6 +46,9 @@ do i=0,dimsizes(radii)-1
    minrad = i*dr
    maxrad = (i+1)*dr
    indices := ind(Robs.ge.minrad.and.Robs.lt.maxrad)
+   if(all(ismissing(indices)))then
+      continue
+   end if
    nobs(i)  = dimsizes(indices)
    avgs(i)  = avg(vals(indices))
    sigma(i) = stddev(vals(indices))

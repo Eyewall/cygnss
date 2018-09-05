@@ -11,16 +11,16 @@
 ; the location of the storm center.
 ;------------------------------------------------
 
-NAME  = "IRMA"
-ID    = "201711L"
+NAME  = "ARLENE"
+ID    = "201701L"
 
 YYYY = "2017"
-MM   = "09"
-DD   = "10"
-HH   = "06"
+MM   = "04"
+DD   = "17"
+HH   = "18"
 mm   = "00"
 ss   = "00"
-radius = 300      ;Search radius (km)
+radius = 1000      ;Search radius (km)
 dt = 60*60*3      ;Time within which to search (s)
 dthr = tostring(dt/3600)
 
@@ -55,6 +55,7 @@ cygtimein := ncinfile->sample_time
 lats      := ncinfile->lat
 lons      := ncinfile->lon
 v         := ncinfile->yslf_nbrcs_wind_speed
+sat       := ncinfile->spacecraft_num
 
 ;Convert cygtime to common units
 cygtime = cd_convert(cygtimein,timeunits)
@@ -95,6 +96,20 @@ end if
 latsplot = lats(selectioninds)
 lonsplot = lons(selectioninds)
 vplot    = v(selectioninds)
+satplot  = sat(selectioninds)
+
+;biginds = ind(vplot.ge.90)
+biginds = ind(satplot.eq.1.and.latsplot.gt.32.and.latsplot.lt.32.5.and.lonsplot.lt.-46.and.lonsplot.gt.-47)
+vprint = vplot(biginds)
+latprint = latsplot(biginds)
+lonprint = lonsplot(biginds)
+satprint = satplot(biginds)
+print( vprint  )
+print( latprint)
+print( lonprint)
+print( satprint)
+
+exit
 
 ;Plot locations of CYGNSS observations along the storm's entire track
 outfilename = outdir+"windspeed-"+YYYY+MM+DD+HH+mm+ss+"-"+radius+"km-"+dthr+"h.pdf"
@@ -153,6 +168,7 @@ do i=0,nthresh-1
    end if
 
    pmres@gsMarkerColor = colors(i)
+   ;dum(i) = gsn_add_polymarker(mapwks,map,lonsplot(indices),latsplot(indices),pmres)
    dum(i) = gsn_add_polymarker(mapwks,map,lonsplot(indices),latsplot(indices),pmres)
 end do
 
