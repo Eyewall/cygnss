@@ -34,34 +34,35 @@ ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
 ;THIS ONLY NEEDS TO BE DONE ONCE FOR   ;
 ;EVERY CYGNSS DIRECTORY.               ;
 ;--------------------------------------;
-;timeunits= "seconds since 2016-1-1 00:00:00"
-;cygfilelist = systemfunc("ls "+cygdir+"*nc")
-;ncygfiles = dimsizes(cygfilelist)
-;mintimes = new(ncygfiles,"integer")
-;maxtimes = new(ncygfiles,"integer")
-;do i=0,ncygfiles-1
-;   unixi = i + 1
-;   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
-;   cygfile   = addfile(cygfilelist(i),"r")
-;   if(datalevel.eq.1)then
-;      cygtimes := cygfile->ddm_timestamp_utc
-;   else if(datalevel.eq.2)then
-;      cygtimes := cygfile->sample_time
-;   end if
-;   end if
-;   ;Convert observation times of each file to a common unit
-;   cygtimes_convert := round(cd_convert(cygtimes,timeunits),3)
-;   mintimes(i) = min(cygtimes_convert)
-;   maxtimes(i) = max(cygtimes_convert)
-;end do
-;;Write to output file
-;header = [/"Time units: '"+timeunits+"'"/]
-;header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
-;outlist = [/cygfilelist,mintimes,maxtimes/]
-;write_table(cygtimefile,"w",header,"%s")
-;write_table(cygtimefile,"a",header2,"%s")
-;write_table(cygtimefile,"a",outlist,"%s%09i%09i")
-;print( "Output written to "+cygtimefile)
+timeunits= "seconds since 2016-1-1 00:00:00"
+cygfilelist = systemfunc("ls "+cygdir+"*nc")
+ncygfiles = dimsizes(cygfilelist)
+mintimes = new(ncygfiles,"integer")
+maxtimes = new(ncygfiles,"integer")
+do i=0,ncygfiles-1
+   unixi = i + 1
+   print( "Processing CYGNSS file "+unixi+" of "+ncygfiles)
+   cygfile   = addfile(cygfilelist(i),"r")
+   if(datalevel.eq.1)then
+      cygtimes := cygfile->ddm_timestamp_utc
+   else if(datalevel.eq.2)then
+      cygtimes := cygfile->sample_time
+   end if
+   end if
+   ;Convert observation times of each file to a common unit
+   cygtimes_convert := round(cd_convert(cygtimes,timeunits),3)
+   mintimes(i) = min(cygtimes_convert)
+   maxtimes(i) = max(cygtimes_convert)
+end do
+;Write to output file
+header = [/"Time units: '"+timeunits+"'"/]
+header2  = [/"                                            FILENAME                                            MIN TIME  MAX TIME"/]
+outlist = [/cygfilelist,mintimes,maxtimes/]
+write_table(cygtimefile,"w",header,"%s")
+write_table(cygtimefile,"a",header2,"%s")
+write_table(cygtimefile,"a",outlist,"%s%09i%09i")
+print( "Output written to "+cygtimefile)
+exit
 ;
 ;;------------------------------------------------;
 ;;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;

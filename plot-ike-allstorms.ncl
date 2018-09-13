@@ -1,15 +1,19 @@
-load "/jm13/pduran/ncl/cygnss/plot_ike.ncl"
+load "/jm13/pduran/ncl/cygnss/filter_cygnss.ncl"
 load "/jm13/pduran/ncl/cygnss/map_cygnss.ncl"
+load "/jm13/pduran/ncl/cygnss/plot_ike.ncl"
 
 bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
 basin = "NATL"
-radius = 1000
+radius = 500
 dt = 3*60*60
 type = 0  ;0 = Azimuthal average using radial bins of width defined below
           ;2 = Morris and Ruf 2-parameter model
           ;3 = Morris and Ruf 3-parameter model (haven't been able to get this to converge!)
 dr = 50   ;If type=0, width of radial bins
-uncert_limit = 4   ;Filter out all obs with uncertainty greater than this (m/s)
+uncert_limit = 3.5   ;Filter out all obs with uncertainty greater than this (m/s)
+wind_rad_compare_limit = 20  ;Filter out all obs that depart from the wind speed defined by
+                             ;the best-track wind radii by more than +/- 20 m/s.
+                             ;(See filter_cygnss.ncl for details.)
 
 ;--------------------------;
 ;GET BEST TRACK INFORMATION;
@@ -54,7 +58,7 @@ if(bttype.eq.0)then
       lons := where(eorwlon.eq."W",lons*-1,lons)
       ;Loop through all times
       ntimes = dimsizes(lats)
-      do j=4,ntimes-1
+      do j=0,ntimes-1
          unixj = j + 1
          print( "#######################################################################")
          print( "Processing time "+unixj+" of "+ntimes+" for storm "+unixi+" of "+nstorms)
@@ -67,10 +71,13 @@ if(bttype.eq.0)then
          ss   = "00"
          lat  = lats(j)
          lon  = lons(j)
+         rmw  = "N/A"
+         ;Call procedure to plot map of CYGNSS observations
+;         map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,uncert_limit)
+;      map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,lat,lon,radius,v,cyglat,cyglon,v_filtered,lats_filtered,lons_filtered,dt,uncert_limit)
+      exit
          ;Call procedure to compute and plot wind profile and IKE
 ;         plot_ike(stormname,stormid,basin,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,type,dr,uncert_limit)
-         ;Call procedure to plot map of CYGNSS observations
-         map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,uncert_limit)
          ;Delete lat and lon variables to avoid warning:VarVarWrite during next iteration
          delete([/lat,lon/])
       end do   ;Times loop
@@ -79,7 +86,13 @@ else  ;bttype
    trakfile = "/jm13/pduran/best-tracks/ebtrk_atlc_2017.txt"
    btinput  = stringtochar(systemfunc("cat "+trakfile))
    nlines = toint(systemfunc("wc "+trakfile)) 
+   r34int = new(4,"integer")
+   r50int = new(4,"integer")
+   r64int = new(4,"integer")
    do i=0,nlines-1
+      print( "#####################################")
+      print( "PROCESSING BEST-TRACK LINE "+i+" OF "+nlines)
+      print( "#####################################")
       stormid   = tostring(btinput(i,0:5))
       stormname = str_squeeze(tostring(btinput(i,7:16)))
       MM        = tostring(btinput(i,17:18))
@@ -92,12 +105,39 @@ else  ;bttype
       lon       = tofloat(tostring(btinput(i,34:38)))*-1
       vmax      = toint(tostring(btinput(i,40:42)))
       rmwint    = toint(tostring(btinput(i,49:51)))
+      eyediamint= toint(tostring(btinput(i,53:55)))
+      r34int    = toint(str_split_by_length(tostring(btinput(i,66:77)),3))
+      r50int    = toint(str_split_by_length(tostring(btinput(i,79:90)),3))
+      r64int    = toint(str_split_by_length(tostring(btinput(i,92:103)),3))
       rmwint@_FillValue = -99
-      rmwkm     = rmwint*1.852  ;Convert nm to km
-      rmw       = tostring(round(rmwkm,3))
+      eyediamint@_FillValue = -99
+      rmw     = round(rmwint*1.852,3)  ;Convert nm to km
+      eyediam = round(eyediamint*1.852,1)
+      r34     = round(r34int*1.852,1)
+      r50     = round(r50int*1.852,1)
+      r64     = round(r64int*1.852,1)
+      r34@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
+      r50@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
+      r64@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
+      ;Call function to read in the CYGNSS data and filter it based on the user-defined criteria
+      winddata := filter_cygnss(YYYY,MM,DD,HH,mm,ss,eyediam,rmw,r34,r50,r64,radius,lat,lon,dt,uncert_limit,wind_rad_compare_limit)
+      ;If the filter_cygnss function does not return a list, then there are no data for this time.
+      if(typeof(winddata).ne."list")then
+         continue
+      end if
+      ;If there is a list of arrays, extract them.
+      v := winddata[0]
+      v_filtered := winddata[1]
+      uncert := winddata[2]
+      cyglat := winddata[3]
+      cyglon := winddata[4]
+      lats_filtered := winddata[5]
+      lons_filtered := winddata[6]
+      ;Call procedure to plot maps. Will plot a montage of filtered and unfiltered wind speeds
+      ;and a montage of unfiltered wind speeds along with their uncertainties in directories
+      ;defined within the map_cygnss procedure.
+      map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,v,uncert,cyglat,cyglon,v_filtered,lats_filtered,lons_filtered,dt,uncert_limit)
       ;Call procedure to compute and plot wind profile and IKE
 ;      plot_ike(stormname,stormid,basin,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,type,dr,uncert_limit)
-      ;Call procedure to plot map of CYGNSS observations
-      map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,uncert_limit)
    end do
 end if   ;bttype
