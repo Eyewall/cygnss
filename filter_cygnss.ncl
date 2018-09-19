@@ -88,9 +88,13 @@ else
       if(searchtype.eq."centered")then
          mintime = time - dt
          maxtime = time + dt
+      else if(searchtype.eq."forward")then
+         mintime = time
+         maxtime = time + dt
       else if(searchtype.eq."backward")then
          mintime = time - dt
          maxtime = time
+      end if
       end if
       end if
       selectioninds := ind(cygtime.ge.mintime.and.cygtime.le.maxtime.and.dist.le.radius)

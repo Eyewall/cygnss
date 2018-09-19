@@ -50,7 +50,7 @@ print( "Plotting map of CYGNSS observations...")
 dthr = tostring(dt/3600)       ;Convert dt to hours
 vmax = toint(vmaxkt*0.514444)  ;Convert vmax to m/s
 
-outdir = "/jm13/pduran/web/cygnss/maps/"+NAME+"-"+ID+"/"
+outdir = "/jm13/pduran/web/cygnss/maps/"+searchtype+"/"+NAME+"-"+ID+"/"
 montagedir = "/jm13/pduran/web/cygnss/ike-windprofiles+maps_montage/"+searchtype+"/"+radius+"km/"
 montagefilterdir = "/jm13/pduran/web/cygnss/filtered-windspeed-maps/"+searchtype+"/"+radius+"km/"
 montageuncertdir = "/jm13/pduran/web/cygnss/windspeed+uncertainty-maps/"+searchtype+"/"+radius+"km/"
@@ -85,10 +85,15 @@ do j=0,2
          mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and "+dthr+" h of "+NAME+\
                              " ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+vmax+" m s~S~-1~N~"+\
                              " ("+vmaxkt+" kt)  RMW = "+rmw+" km"
+      else if(searchtype.eq."forward")
+         mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and within "+dthr+\
+                                " h after "+NAME+" ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+\
+                                vmax+" m s~S~-1~N~"+" ("+vmaxkt+" kt)  RMW = "+rmw+" km"
       else if(searchtype.eq."backward")
          mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and within "+dthr+\
                                 " h prior to "+NAME+" ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+\
                                 vmax+" m s~S~-1~N~"+" ("+vmaxkt+" kt)  RMW = "+rmw+" km"
+      end if
       end if
       end if
    else if(j.eq.1)then

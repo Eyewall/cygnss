@@ -6,8 +6,9 @@ bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
 basin = "NATL"
 radius = 500
 dt = 6*60*60  ;Time period within which to search
-searchtype = "backward"  ;Valid options: "centered" or "backward"
+searchtype = "forward"   ;Valid options: "centered", "forward", or "backward"
                          ;Centered: Looks for obs within dt on each side of best-track time.
+                         ;Forward: Looks for obs within dt after the best-track time.
                          ;Backward: Looks for obs within dt prior to the best-track time.
 type = 0  ;0 = Azimuthal average using radial bins of width defined below
           ;2 = Morris and Ruf 2-parameter model
