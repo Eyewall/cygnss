@@ -42,7 +42,7 @@
 ;------------------------------------------------
 
 undef("map_cygnss")
-procedure map_cygnss(NAME,ID,YYYY,MM,DD,HH,mm,ss,vmaxkt,rmw,r34,r50,r64,stormlat,stormlon,radius,v,uncert,lat,lon,v_filtered,lats_filtered,lons_filtered,dt,uncert_limit)
+procedure map_cygnss(NAME,ID,YYYY,MM,DD,HH,mm,ss,vmaxkt,rmw,r34,r50,r64,stormlat,stormlon,radius,v,uncert,lat,lon,v_filtered,lats_filtered,lons_filtered,dt,searchtype,uncert_limit)
 begin
 
 print( "Plotting map of CYGNSS observations...")
@@ -51,9 +51,9 @@ dthr = tostring(dt/3600)       ;Convert dt to hours
 vmax = toint(vmaxkt*0.514444)  ;Convert vmax to m/s
 
 outdir = "/jm13/pduran/web/cygnss/maps/"+NAME+"-"+ID+"/"
-montagedir = "/jm13/pduran/web/cygnss/ike-windprofiles+maps_montage/"+radius+"km/"
-montagefilterdir = "/jm13/pduran/web/cygnss/filtered-windspeed-maps/"+radius+"km/"
-montageuncertdir = "/jm13/pduran/web/cygnss/windspeed+uncertainty-maps/"+radius+"km/"
+montagedir = "/jm13/pduran/web/cygnss/ike-windprofiles+maps_montage/"+searchtype+"/"+radius+"km/"
+montagefilterdir = "/jm13/pduran/web/cygnss/filtered-windspeed-maps/"+searchtype+"/"+radius+"km/"
+montageuncertdir = "/jm13/pduran/web/cygnss/windspeed+uncertainty-maps/"+searchtype+"/"+radius+"km/"
 
 ;If output directory doesn't exist, create it.
 dirstotest = (/outdir,montagedir,montagefilterdir,montageuncertdir/)
@@ -70,9 +70,6 @@ r34 = r34 * kmtodeg
 r50 = r50 * kmtodeg
 r64 = r64 * kmtodeg
 
-print( r34)
-print( r50)
-
 map = new(3,"graphic")
 do j=0,2
    mapres = True
@@ -84,9 +81,16 @@ do j=0,2
       vplot    = v
       latsplot = lat
       lonsplot = lon
-      mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and "+dthr+" h of "+NAME+\
-                          " ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+vmax+" m s~S~-1~N~"+\
-                          " ("+vmaxkt+" kt)  RMW = "+rmw+" km"
+      if(searchtype.eq."centered")then
+         mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and "+dthr+" h of "+NAME+\
+                             " ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+vmax+" m s~S~-1~N~"+\
+                             " ("+vmaxkt+" kt)  RMW = "+rmw+" km"
+      else if(searchtype.eq."backward")
+         mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and within "+dthr+\
+                                " h prior to "+NAME+" ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+\
+                                vmax+" m s~S~-1~N~"+" ("+vmaxkt+" kt)  RMW = "+rmw+" km"
+      end if
+      end if
    else if(j.eq.1)then
       ;Plot locations of filtered CYGNSS observations
       outfilename = outdir+"filtered-"+YYYY+MM+DD+HH+mm+ss+"-"+radius+"km-"+dthr+"h.png"
@@ -128,7 +132,7 @@ do j=0,2
    mapres@gsnFrame = False
    map(j) = gsn_csm_map(mapwks,mapres)
    pmres = True
-   pmres@gsMarkerSizeF = 40
+   pmres@gsMarkerSizeF = 30
    pmres@gsMarkerIndex = 1
 
    ;Loop through wind speed thresholds and plot dots for each threshold

@@ -5,7 +5,10 @@ load "/jm13/pduran/ncl/cygnss/plot_ike.ncl"
 bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
 basin = "NATL"
 radius = 500
-dt = 3*60*60
+dt = 6*60*60  ;Time period within which to search
+searchtype = "backward"  ;Valid options: "centered" or "backward"
+                         ;Centered: Looks for obs within dt on each side of best-track time.
+                         ;Backward: Looks for obs within dt prior to the best-track time.
 type = 0  ;0 = Azimuthal average using radial bins of width defined below
           ;2 = Morris and Ruf 2-parameter model
           ;3 = Morris and Ruf 3-parameter model (haven't been able to get this to converge!)
@@ -120,7 +123,7 @@ else  ;bttype
       r50@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
       r64@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
       ;Call function to read in the CYGNSS data and filter it based on the user-defined criteria
-      winddata := filter_cygnss(YYYY,MM,DD,HH,mm,ss,eyediam,rmw,r34,r50,r64,radius,lat,lon,dt,uncert_limit,wind_rad_compare_limit)
+      winddata := filter_cygnss(YYYY,MM,DD,HH,mm,ss,eyediam,rmw,r34,r50,r64,radius,lat,lon,dt,searchtype,uncert_limit,wind_rad_compare_limit)
       ;If the filter_cygnss function does not return a list, then there are no data for this time.
       if(typeof(winddata).ne."list")then
          continue
@@ -136,8 +139,8 @@ else  ;bttype
       ;Call procedure to plot maps. Will plot a montage of filtered and unfiltered wind speeds
       ;and a montage of unfiltered wind speeds along with their uncertainties in directories
       ;defined within the map_cygnss procedure.
-      map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,v,uncert,cyglat,cyglon,v_filtered,lats_filtered,lons_filtered,dt,uncert_limit)
-      ;Call procedure to compute and plot wind profile and IKE
+      map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,v,uncert,cyglat,cyglon,v_filtered,lats_filtered,lons_filtered,dt,searchtype,uncert_limit)
+     ;Call procedure to compute and plot wind profile and IKE
 ;      plot_ike(stormname,stormid,basin,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,type,dr,uncert_limit)
    end do
 end if   ;bttype
