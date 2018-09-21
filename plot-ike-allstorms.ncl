@@ -1,12 +1,13 @@
 load "/jm13/pduran/ncl/cygnss/filter_cygnss.ncl"
 load "/jm13/pduran/ncl/cygnss/map_cygnss.ncl"
+load "/jm13/pduran/ncl/cygnss/read_sfmr.ncl"
 load "/jm13/pduran/ncl/cygnss/plot_ike.ncl"
 
 bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
 basin = "NATL"
 radius = 500
 dt = 6*60*60  ;Time period within which to search
-searchtype = "forward"   ;Valid options: "centered", "forward", or "backward"
+searchtype = "backward"   ;Valid options: "centered", "forward", or "backward"
                          ;Centered: Looks for obs within dt on each side of best-track time.
                          ;Forward: Looks for obs within dt after the best-track time.
                          ;Backward: Looks for obs within dt prior to the best-track time.
@@ -123,24 +124,37 @@ else  ;bttype
       r34@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
       r50@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
       r64@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
+
       ;Call function to read in the CYGNSS data and filter it based on the user-defined criteria
-      winddata := filter_cygnss(YYYY,MM,DD,HH,mm,ss,eyediam,rmw,r34,r50,r64,radius,lat,lon,dt,searchtype,uncert_limit,wind_rad_compare_limit)
-      ;If the filter_cygnss function does not return a list, then there are no data for this time.
-      if(typeof(winddata).ne."list")then
-         continue
+      cygdata := filter_cygnss(YYYY,MM,DD,HH,mm,ss,eyediam,rmw,r34,r50,r64,radius,lat,lon,dt,searchtype,\
+                 uncert_limit,wind_rad_compare_limit)
+
+      ;If there is a list of arrays, extract them and call CYGNSS mapping function.
+      if(typeof(cygdata).eq."list")then
+         v := cygdata[0]
+         v_filtered := cygdata[1]
+         uncert := cygdata[2]
+         cyglat := cygdata[3]
+         cyglon := cygdata[4]
+         lats_filtered := cygdata[5]
+         lons_filtered := cygdata[6]
+         ;Call procedure to plot maps. Will plot a montage of filtered and unfiltered wind speeds
+         ;and a montage of unfiltered wind speeds along with their uncertainties in directories
+         ;defined within the map_cygnss procedure.
+         map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,v,uncert,\
+                    cyglat,cyglon,v_filtered,lats_filtered,lons_filtered,dt,searchtype,uncert_limit)
       end if
-      ;If there is a list of arrays, extract them.
-      v := winddata[0]
-      v_filtered := winddata[1]
-      uncert := winddata[2]
-      cyglat := winddata[3]
-      cyglon := winddata[4]
-      lats_filtered := winddata[5]
-      lons_filtered := winddata[6]
-      ;Call procedure to plot maps. Will plot a montage of filtered and unfiltered wind speeds
-      ;and a montage of unfiltered wind speeds along with their uncertainties in directories
-      ;defined within the map_cygnss procedure.
-      map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,v,uncert,cyglat,cyglon,v_filtered,lats_filtered,lons_filtered,dt,searchtype,uncert_limit)
+
+      ;Call function to read in SFMR data and filter it based on the user-defined criteria
+      sfmrdata := read_sfmr(YYYY,MM,DD,HH,mm,ss,stormname,dt,searchtype)
+
+      ;If there is a list of arrays, extract them and call SFMR mapping function.
+      if(typeof(sfmrdata).eq."list")then
+         sfmrv   := sfmrdata[0]
+         sfmrlat := sfmrdata[1]
+         sfmrlon := sfmrdata[2]
+      end if
+      
      ;Call procedure to compute and plot wind profile and IKE
 ;      plot_ike(stormname,stormid,basin,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,type,dr,uncert_limit)
    end do

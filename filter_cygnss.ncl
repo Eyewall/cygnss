@@ -34,7 +34,6 @@ else
    ;Only allows two iterations, which means that a maximum of two CYGNSS
    ;files can be read. This precludes using dt > 24 hours.
    do i=0,1
-      print( infile)
       ncinfile = addfile(infile,"r")
       ;Get time, lats, and lons of CYGNSS observations and wind speeds
       cygtimein := ncinfile->sample_time
@@ -58,21 +57,25 @@ else
       ;If the 14th bit is flipped, then there is non-fatal low-quality GPS
       ;antenna knowledge (usually Block IIf satellites.)
       ;We will only deal with values where these bits are not flipped.
-      nonerrorinds := ind(bitmaskrev(:,0).eq.0.and.bitmask(:,8).eq.0\
-                         .and.bitmask(:,13).eq.0.and.bitmask(:,14).eq.0)
+      errorinds := ind(bitmaskrev(:,0).eq.1.or.bitmask(:,8).eq.1\
+                       .or.bitmask(:,13).eq.1.or.bitmask(:,14).eq.1)
+      latsin(errorinds) = latsin@_FillValue
+      lonsin(errorinds) = lonsin@_FillValue
+      vin(errorinds)    = vin@_FillValue
+
       if(i.eq.0)then
-         cygtime = round(cd_convert(cygtimein(nonerrorinds),timeunits),3)
-         lats    = latsin(nonerrorinds)
-         lons    = lonsin(nonerrorinds)
-         v       = vin(nonerrorinds)
-         uncert  = uncertin(nonerrorinds)
+         cygtime = round(cd_convert(cygtimein,timeunits),3)
+         lats    = latsin
+         lons    = lonsin
+         v       = vin
+         uncert  = uncertin
       else
          ;Append the arrays from the new file to arrays from the previous file
-         cygtimea:= array_append_record(cygtime,round(cd_convert(cygtimein(nonerrorinds),timeunits),3),0)
-         latsa   := array_append_record(lats,latsin(nonerrorinds),0)
-         lonsa   := array_append_record(lons,lonsin(nonerrorinds),0)
-         va      := array_append_record(v,vin(nonerrorinds),0)
-         uncerta := array_append_record(uncert,uncertin(nonerrorinds),0)
+         cygtimea:= array_append_record(cygtime,round(cd_convert(cygtimein,timeunits),3),0)
+         latsa   := array_append_record(lats,latsin,0)
+         lonsa   := array_append_record(lons,lonsin,0)
+         va      := array_append_record(v,vin,0)
+         uncerta := array_append_record(uncert,uncertin,0)
          ;Reset arrays to the new, concatenated arrays.
          cygtime := cygtimea
          lats    := latsa
