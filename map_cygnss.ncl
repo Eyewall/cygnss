@@ -82,15 +82,15 @@ do j=0,2
       latsplot = lat
       lonsplot = lon
       if(searchtype.eq."centered")then
-         mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and "+dthr+" h of "+NAME+\
-                             " ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+vmax+" m s~S~-1~N~"+\
-                             " ("+vmaxkt+" kt)  RMW = "+rmw+" km"
+         mapres@gsnLeftString = "CYGNSS winds (m s~S~-1~N~) within "+radius+"km and "+dthr+" h of "+\
+                                 NAME+" ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+vmax+\
+                                " m s~S~-1~N~"+" ("+vmaxkt+" kt)  RMW = "+rmw+" km"
       else if(searchtype.eq."forward")
-         mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and within "+dthr+\
+         mapres@gsnLeftString = "CYGNSS winds (m s~S~-1~N~) within "+radius+"km and within "+dthr+\
                                 " h after "+NAME+" ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+\
                                 vmax+" m s~S~-1~N~"+" ("+vmaxkt+" kt)  RMW = "+rmw+" km"
       else if(searchtype.eq."backward")
-         mapres@gsnLeftString = "Winds (m s~S~-1~N~) within "+radius+"km and within "+dthr+\
+         mapres@gsnLeftString = "CYGNSS winds (m s~S~-1~N~) within "+radius+"km and within "+dthr+\
                                 " h prior to "+NAME+" ("+YYYY+MM+DD+" "+HH+mm+" UTC)~C~V~B~max~N~ = "+\
                                 vmax+" m s~S~-1~N~"+" ("+vmaxkt+" kt)  RMW = "+rmw+" km"
       end if
