@@ -46,7 +46,7 @@ maxtimes      = toint(sfmrinfosplit(:,3))
 bttime = round(cd_inv_calendar(toint(YYYY),toint(MM),toint(DD),toint(HH),toint(mm),toint(ss),timeunits,0),3)
 
 ;Find the SFMR files that contain data for the selected time period and storm
-thisstorminds = ind(str_capital(str_lower(name)).eq.stormnames)
+thisstorminds = ind(name.eq.stormnames)
 if(searchtype.eq."centered")then
    mintime = bttime - dt
    maxtime = bttime + dt

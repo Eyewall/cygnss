@@ -33,7 +33,7 @@ do i=0,nfiles-1
    f = addfile(filelist(i),"r")
    date := f->DATE
    time := f->TIME
-   stormname(i) = f@StormName
+   stormname(i) = str_upper(f@StormName)
    date@_FillValue = -9999
    time@_FillValue = -9999
 

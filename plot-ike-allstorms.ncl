@@ -1,6 +1,7 @@
 load "/jm13/pduran/ncl/cygnss/filter_cygnss.ncl"
 load "/jm13/pduran/ncl/cygnss/map_cygnss.ncl"
 load "/jm13/pduran/ncl/cygnss/read_sfmr.ncl"
+load "/jm13/pduran/ncl/cygnss/map_sfmr.ncl"
 load "/jm13/pduran/ncl/cygnss/plot_ike.ncl"
 
 bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
@@ -94,7 +95,7 @@ else  ;bttype
    r34int = new(4,"integer")
    r50int = new(4,"integer")
    r64int = new(4,"integer")
-   do i=0,nlines-1
+   do i=240,nlines-1
       print( "#####################################")
       print( "PROCESSING BEST-TRACK LINE "+i+" OF "+nlines)
       print( "#####################################")
@@ -138,21 +139,20 @@ else  ;bttype
          cyglon := cygdata[4]
          lats_filtered := cygdata[5]
          lons_filtered := cygdata[6]
-         ;Call procedure to plot maps. Will plot a montage of filtered and unfiltered wind speeds
-         ;and a montage of unfiltered wind speeds along with their uncertainties in directories
-         ;defined within the map_cygnss procedure.
          map_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,v,uncert,\
                     cyglat,cyglon,v_filtered,lats_filtered,lons_filtered,dt,searchtype,uncert_limit)
       end if
 
       ;Call function to read in SFMR data and filter it based on the user-defined criteria
-      sfmrdata := read_sfmr(YYYY,MM,DD,HH,mm,ss,stormname,dt,searchtype)
+      sfmrdata := read_sfmr(YYYY,MM,DD,HH,mm,ss,str_upper(stormname),lat,lon,radius,dt,searchtype)
 
       ;If there is a list of arrays, extract them and call SFMR mapping function.
       if(typeof(sfmrdata).eq."list")then
          sfmrv   := sfmrdata[0]
          sfmrlat := sfmrdata[1]
          sfmrlon := sfmrdata[2]
+         map_sfmr(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,v,lat,lon,\
+                  dt,searchtype)
       end if
       
      ;Call procedure to compute and plot wind profile and IKE
