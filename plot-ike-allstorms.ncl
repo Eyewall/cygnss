@@ -3,6 +3,7 @@ load "/jm13/pduran/ncl/cygnss/map_cygnss.ncl"
 load "/jm13/pduran/ncl/cygnss/read_sfmr.ncl"
 load "/jm13/pduran/ncl/cygnss/map_sfmr.ncl"
 load "/jm13/pduran/ncl/cygnss/plot_ike.ncl"
+load "/jm13/pduran/ncl/cygnss/montage_cygnss.ncl"
 
 bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
 basin = "NATL"
@@ -95,7 +96,7 @@ else  ;bttype
    r34int = new(4,"integer")
    r50int = new(4,"integer")
    r64int = new(4,"integer")
-   do i=240,nlines-1
+   do i=0,nlines-1
       print( "#####################################")
       print( "PROCESSING BEST-TRACK LINE "+i+" OF "+nlines)
       print( "#####################################")
@@ -149,9 +150,12 @@ else  ;bttype
          sfmrlon := sfmrdata[2]
          map_sfmr(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,\
                   sfmrv,sfmrlat,sfmrlon,dt,searchtype)
-         exit
       end if
-      
+      ;If CYGNSS maps were created, montage them. Also include type of sfmrdata to determine
+      ;whether or not to include SFMR map in montage.
+      if(typeof(cygdata).eq."list")then
+        montage_cygnss(stormname,stormid,YYYY,MM,DD,HH,mm,ss,searchtype,radius,dt,typeof(sfmrdata))
+      end if
      ;Call procedure to compute and plot wind profile and IKE
 ;      plot_ike(stormname,stormid,basin,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,type,dr,uncert_limit)
    end do

@@ -52,18 +52,12 @@ dthr = tostring(dt/3600)       ;Convert dt to hours
 vmax = toint(vmaxkt*0.514444)  ;Convert vmax to m/s
 
 outdir = "/jm13/pduran/web/cygnss/maps/"+searchtype+"/"+NAME+"-"+ID+"/"
-montagedir = "/jm13/pduran/web/cygnss/ike-windprofiles+maps_montage/"+searchtype+"/"+radius+"km/"
-montagefilterdir = "/jm13/pduran/web/cygnss/filtered-windspeed-maps/"+searchtype+"/"+radius+"km/"
-montageuncertdir = "/jm13/pduran/web/cygnss/windspeed+uncertainty-maps/"+searchtype+"/"+radius+"km/"
 
 ;If output directory doesn't exist, create it.
-dirstotest = (/outdir,montagedir,montagefilterdir,montageuncertdir/)
-do testdir=0,dimsizes(dirstotest)-1
-   dirtest = systemfunc("test -d "+dirstotest(testdir)+"; echo $?")
-   if(dirtest.eq.1)then
-      system("mkdir "+dirstotest(testdir))
-   end if
-end do
+dirtest = systemfunc("test -d "+outdir+"; echo $?")
+if(dirtest.eq.1)then
+   system("mkdir "+outdir)
+end if
 
 ;Convert wind radii from km to degrees
 kmtodeg = 1/111.
@@ -336,31 +330,6 @@ do j=0,2
    dum1 := gsn_add_text(mapwks,map(j),symb,stormlon,stormlat,txres)
    draw(map(j))
    frame(mapwks)
-
-   ;Montage the images
-   if(j.eq.1)then
-      ;Montage wind speed and filtered wind speed maps
-      montageoutdir = montagefilterdir+NAME+"-"+ID+"/"
-      ;If output directory doesn't exist, create it.
-      dirtest = systemfunc("test -d "+montageoutdir+"; echo $?")
-      if(dirtest.eq.1)then
-         system("mkdir "+montageoutdir)
-      end if
-      montagefilename = montageoutdir+YYYY+MM+DD+HH+mm+ss+"-"+radius+"km-"+dthr+"h.png"
-      print( "Writing montage to "+montagefilename)
-      system("montage "+windoutfilename+" "+filtoutfilename+" -trim -tile 1x2 -bordercolor white -border 5 -geometry +0+0 "+montagefilename)
-   else if(j.eq.2) 
-      ;Montage wind speed and uncertainty maps
-      montageoutdir = montageuncertdir+NAME+"-"+ID+"/"
-      montagefilename = montageoutdir+YYYY+MM+DD+HH+mm+ss+"-"+radius+"km-"+dthr+"h.png"
-      ;If output directory doesn't exist, create it.
-      dirtest = systemfunc("test -d "+montageoutdir+"; echo $?")
-      if(dirtest.eq.1)then
-         system("mkdir "+montageoutdir)
-      end if
-      system("montage "+windoutfilename+" "+uncertoutfilename+" -trim -tile 1x2 -bordercolor white -border 5 -geometry +0+0 "+montagefilename)
-   end if
-   end if
 end do
 
 end
