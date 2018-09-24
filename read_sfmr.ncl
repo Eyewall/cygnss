@@ -84,11 +84,11 @@ do i=0,dimsizes(sfmrfiles)-1
       v     = vin
    else
       ;Append the arrays from the new file to arrays from the previous file
-      datesa = array_append_record(dates,datesin,0)  
-      timesa = array_append_record(times,timesin,0)  
-      latsa  = array_append_record(lats,latsin,0)  
-      lonsa  = array_append_record(lons,lonsin,0)  
-      va     = array_append_record(v,vin,0)  
+      datesa := array_append_record(dates,datesin,0)  
+      timesa := array_append_record(times,timesin,0)  
+      latsa  := array_append_record(lats,latsin,0)  
+      lonsa  := array_append_record(lons,lonsin,0)  
+      va     := array_append_record(v,vin,0)  
       ;Reset arrays to the new, concatenated arrays.
       dates := datesa
       times := timesa
@@ -125,12 +125,15 @@ sfmrtime = round(cd_inv_calendar(sfmryear,sfmrmon,sfmrday,sfmrhour,sfmrminu,sfmr
 ;Find distance between storm center and each SFMR retrieval
 dist = gc_latlon(stormlat,stormlon,lats,lons,2,4)
 
-;Find all of the data that fit the time constraints
+;Find all of the data that fit the time constraints and return
 indices = ind(sfmrtime.ge.mintime.and.sfmrtime.lt.maxtime.and.dist.le.radius)
-sfmrv = v(indices)
-sfmrlats = lats(indices)
-sfmrlons = lons(indices)
-
-return([/sfmrv,sfmrlats,sfmrlons/])
+if(all(ismissing(indices)))then
+   return(0)
+else
+   sfmrv = v(indices)
+   sfmrlats = lats(indices)
+   sfmrlons = lons(indices)
+   return([/sfmrv,sfmrlats,sfmrlons/])
+end if
 
 end

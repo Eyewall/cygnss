@@ -22,9 +22,9 @@
 ; ss: Seconds (string)
 ; vmaxkt: Maximum wind speed in knots (string)
 ; rmw: Radius of maximum wind (string)
-; r34: Maximum radius of 34-kt winds (km; float)
-; r50: Maximum radius of 50-kt winds (km; float)
-; r64: Maximum radius of 64-kt winds (km; float)
+; R34: Maximum radius of 34-kt winds (km; float)
+; R50: Maximum radius of 50-kt winds (km; float)
+; R64: Maximum radius of 64-kt winds (km; float)
 ; stormlat: Latitude of storm center (string)
 ; stormlon: Longitude of storm center (string)
 ; radius: Maximum radius within which to search
@@ -43,6 +43,7 @@
 
 undef("map_cygnss")
 procedure map_cygnss(NAME,ID,YYYY,MM,DD,HH,mm,ss,vmaxkt,rmw,r34,r50,r64,stormlat,stormlon,radius,v,uncert,lat,lon,v_filtered,lats_filtered,lons_filtered,dt,searchtype,uncert_limit)
+local R34, R50, R64, vplot, latsplot, lonsplot
 begin
 
 print( "Plotting map of CYGNSS observations...")
@@ -66,9 +67,9 @@ end do
 
 ;Convert wind radii from km to degrees
 kmtodeg = 1/111.
-r34 = r34 * kmtodeg
-r50 = r50 * kmtodeg
-r64 = r64 * kmtodeg
+R34 = r34 * kmtodeg
+R50 = r50 * kmtodeg
+R64 = r64 * kmtodeg
 
 map = new(3,"graphic")
 do j=0,2
@@ -197,68 +198,68 @@ do j=0,2
 
    ;PLOT BEST-TRACK WIND RADII INDICATORS
    ;Create arrays to store lats and lons of wind radii quadrants
-   r34latsne = new(360,"float")
-   r34latsse = new(360,"float")
-   r34latssw = new(360,"float")
-   r34latsnw = new(360,"float")
-   r50latsne = new(360,"float")
-   r50latsse = new(360,"float")
-   r50latssw = new(360,"float")
-   r50latsnw = new(360,"float")
-   r64latsne = new(360,"float")
-   r64latsse = new(360,"float")
-   r64latssw = new(360,"float")
-   r64latsnw = new(360,"float")
-   r34lonsne = new(360,"float")
-   r34lonsse = new(360,"float")
-   r34lonssw = new(360,"float")
-   r34lonsnw = new(360,"float")
-   r50lonsne = new(360,"float")
-   r50lonsse = new(360,"float")
-   r50lonssw = new(360,"float")
-   r50lonsnw = new(360,"float")
-   r64lonsne = new(360,"float")
-   r64lonsse = new(360,"float")
-   r64lonssw = new(360,"float")
-   r64lonsnw = new(360,"float")
+   R34latsne = new(360,"float")
+   R34latsse = new(360,"float")
+   R34latssw = new(360,"float")
+   R34latsnw = new(360,"float")
+   R50latsne = new(360,"float")
+   R50latsse = new(360,"float")
+   R50latssw = new(360,"float")
+   R50latsnw = new(360,"float")
+   R64latsne = new(360,"float")
+   R64latsse = new(360,"float")
+   R64latssw = new(360,"float")
+   R64latsnw = new(360,"float")
+   R34lonsne = new(360,"float")
+   R34lonsse = new(360,"float")
+   R34lonssw = new(360,"float")
+   R34lonsnw = new(360,"float")
+   R50lonsne = new(360,"float")
+   R50lonsse = new(360,"float")
+   R50lonssw = new(360,"float")
+   R50lonsnw = new(360,"float")
+   R64lonsne = new(360,"float")
+   R64lonsse = new(360,"float")
+   R64lonssw = new(360,"float")
+   R64lonsnw = new(360,"float")
    ;Compute lats and lons that correspond to the radius of each wind quadrant
    ;The circles are "drawn" counter-clockwise starting S of the storm center,
    ;such that subscripts 0-90 are the SE quadrant, 90-180 the NE quadrant, etc.
-   if(r34(0).ne.0)then
-      nggcog(stormlat,stormlon,r34(0),r34latsne,r34lonsne)
+   if(R34(0).ne.0)then
+      nggcog(stormlat,stormlon,R34(0),R34latsne,R34lonsne)
    end if
-   if(r34(1).ne.0)then
-      nggcog(stormlat,stormlon,r34(1),r34latsse,r34lonsse)
+   if(R34(1).ne.0)then
+      nggcog(stormlat,stormlon,R34(1),R34latsse,R34lonsse)
    end if
-   if(r34(2).ne.0)then
-      nggcog(stormlat,stormlon,r34(2),r34latssw,r34lonssw)
+   if(R34(2).ne.0)then
+      nggcog(stormlat,stormlon,R34(2),R34latssw,R34lonssw)
    end if
-   if(r34(3).ne.0)then
-      nggcog(stormlat,stormlon,r34(3),r34latsnw,r34lonsnw)
+   if(R34(3).ne.0)then
+      nggcog(stormlat,stormlon,R34(3),R34latsnw,R34lonsnw)
    end if
-   if(r50(0).ne.0)then
-      nggcog(stormlat,stormlon,r50(0),r50latsne,r50lonsne)
+   if(R50(0).ne.0)then
+      nggcog(stormlat,stormlon,R50(0),R50latsne,R50lonsne)
    end if
-   if(r50(1).ne.0)then
-      nggcog(stormlat,stormlon,r50(1),r50latsse,r50lonsse)
+   if(R50(1).ne.0)then
+      nggcog(stormlat,stormlon,R50(1),R50latsse,R50lonsse)
    end if
-   if(r50(2).ne.0)then
-      nggcog(stormlat,stormlon,r50(2),r50latssw,r50lonssw)
+   if(R50(2).ne.0)then
+      nggcog(stormlat,stormlon,R50(2),R50latssw,R50lonssw)
    end if
-   if(r50(3).ne.0)then
-      nggcog(stormlat,stormlon,r50(3),r50latsnw,r50lonsnw)
+   if(R50(3).ne.0)then
+      nggcog(stormlat,stormlon,R50(3),R50latsnw,R50lonsnw)
    end if
-    if(r64(0).ne.0)then
-      nggcog(stormlat,stormlon,r64(0),r64latsne,r64lonsne)
+    if(R64(0).ne.0)then
+      nggcog(stormlat,stormlon,R64(0),R64latsne,R64lonsne)
    end if
-   if(r64(1).ne.0)then
-      nggcog(stormlat,stormlon,r64(1),r64latsse,r64lonsse)
+   if(R64(1).ne.0)then
+      nggcog(stormlat,stormlon,R64(1),R64latsse,R64lonsse)
    end if
-   if(r64(2).ne.0)then
-      nggcog(stormlat,stormlon,r64(2),r64latssw,r64lonssw)
+   if(R64(2).ne.0)then
+      nggcog(stormlat,stormlon,R64(2),R64latssw,R64lonssw)
    end if
-   if(r64(3).ne.0)then
-      nggcog(stormlat,stormlon,r64(3),r64latsnw,r64lonsnw)
+   if(R64(3).ne.0)then
+      nggcog(stormlat,stormlon,R64(3),R64latsnw,R64lonsnw)
    end if
 
    ;Plot wind radii on map
@@ -266,54 +267,54 @@ do j=0,2
    radres@gsLineThicknessF = 7.
 
    ;34-kt wind radii
-   if(.not.all(r34.eq.0))then
+   if(.not.all(R34.eq.0))then
       radres@gsLineColor = "blue"
       raddum1  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r34lonsse(0:90),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r34latsse(0:90),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R34lonsse(0:90),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R34latsse(0:90),stormlat,0),0),radres)
       raddum2  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r34lonsne(90:180),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r34latsne(90:180),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R34lonsne(90:180),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R34latsne(90:180),stormlat,0),0),radres)
       raddum3  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r34lonsnw(180:267),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r34latsnw(180:267),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R34lonsnw(180:267),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R34latsnw(180:267),stormlat,0),0),radres)
       raddum4  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r34lonssw(267:359),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r34latssw(267:359),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R34lonssw(267:359),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R34latssw(267:359),stormlat,0),0),radres)
    end if
 
    ;50-kt wind radii
-   if(.not.all(r50.eq.0))then
+   if(.not.all(R50.eq.0))then
       radres@gsLineColor = "orange"
       raddum5  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r50lonsse(0:90),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r50latsse(0:90),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R50lonsse(0:90),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R50latsse(0:90),stormlat,0),0),radres)
       raddum6  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r50lonsne(90:180),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r50latsne(90:180),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R50lonsne(90:180),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R50latsne(90:180),stormlat,0),0),radres)
       raddum7  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r50lonsnw(180:267),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r50latsnw(180:267),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R50lonsnw(180:267),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R50latsnw(180:267),stormlat,0),0),radres)
       raddum8  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r50lonssw(267:359),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r50latssw(267:359),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R50lonssw(267:359),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R50latssw(267:359),stormlat,0),0),radres)
    end if
 
    ;64-kt wind radii
-   if(.not.all(r64.eq.0))then
+   if(.not.all(R64.eq.0))then
       radres@gsLineColor = "red"
       raddum9  = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r64lonsse(0:90),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r64latsse(0:90),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R64lonsse(0:90),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R64latsse(0:90),stormlat,0),0),radres)
       raddum10 = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r64lonsne(90:180),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r64latsne(90:180),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R64lonsne(90:180),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R64latsne(90:180),stormlat,0),0),radres)
       raddum11 = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r64lonsnw(180:267),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r64latsnw(180:267),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R64lonsnw(180:267),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R64latsnw(180:267),stormlat,0),0),radres)
       raddum12 = gsn_add_polyline(mapwks,map(j),\
-                 array_append_record(stormlon,array_append_record(r64lonssw(267:359),stormlon,0),0),\
-                 array_append_record(stormlat,array_append_record(r64latssw(267:359),stormlat,0),0),radres)
+                 array_append_record(stormlon,array_append_record(R64lonssw(267:359),stormlon,0),0),\
+                 array_append_record(stormlat,array_append_record(R64latssw(267:359),stormlat,0),0),radres)
    end if
 
   
