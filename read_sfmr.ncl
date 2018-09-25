@@ -73,9 +73,9 @@ do i=0,dimsizes(sfmrfiles)-1
    f = addfile(sfmrfiles(i),"r")
    datesin := f->DATE
    timesin := f->TIME
-   latsin  := f->LAT
-   lonsin  := f->LON
-   vin     := f->SWS
+   latsin  := tofloat(f->LAT)
+   lonsin  := tofloat(f->LON)
+   vin     := tofloat(f->SWS)
    flagsin := f->FLAG
    if(i.eq.0)then
       dates = datesin

@@ -38,7 +38,7 @@ print( "Writing montage to "+montagefilename)
 if(sfmroutvartype.ne."list")then   ;No SFMR; montage CYGNSS only
    system("montage "+windoutfilename+" "+filtoutfilename+" -trim -tile 1x2 -bordercolor white -border 5 -geometry +0+0 "+montagefilename)
 else  ;There are SFMR data, so plot them along with CYGNSS
-   system("montage "+windoutfilename+" "+filtoutfilename+" "+sfmroutfilename+" -trim -tile 1x3 -bordercolor white -border 5 -geometry +0+0 "+montagefilename)
+   system("montage "+windoutfilename+" "+sfmroutfilename+" "+filtoutfilename+" -trim -tile 2x2 -bordercolor white -border 5 -geometry +0+0 "+montagefilename)
 end if
 
 ;Montage wind speed and uncertainty maps
