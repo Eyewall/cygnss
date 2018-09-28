@@ -127,15 +127,23 @@ else
       print( "No CYGNSS observations within the selected time interval and search radius.")
       return(0)
    else
-      ;Create output variables
       v_out         = v(selectioninds)
-      v_filtered    = v(selectioninds_filtered)
       uncertainties = uncert(selectioninds)
       latsout       = lats(selectioninds)
       lonsout       = lons(selectioninds)
+   end if
+   if(.not.all(ismissing(selectioninds_filtered)))then
+      v_filtered    = v(selectioninds_filtered)
       lats_filtered = lats(selectioninds_filtered)
       lons_filtered = lons(selectioninds_filtered)
-      return [/v_out,v_filtered,uncertainties,latsout,lonsout,lats_filtered,lons_filtered/]
+   else
+      v_filtered    = v@_FillValue
+      lats_filtered = v@_FillValue
+      lons_filtered = v@_FillValue
+      printVarSummary( v)
+      printVarSummary( v_filtered)
+      exit
    end if
+   return [/v_out,v_filtered,uncertainties,latsout,lonsout,lats_filtered,lons_filtered/]
 end if
 end

@@ -7,9 +7,9 @@ load "/jm13/pduran/ncl/cygnss/montage_cygnss.ncl"
 
 bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
 basin = "NATL"
-radius = 200
-dt = 6*60*60  ;Time period within which to search
-searchtype = "backward"   ;Valid options: "centered", "forward", or "backward"
+radius = 500
+dt = 3*60*60  ;Time period within which to search
+searchtype = "centered"   ;Valid options: "centered", "forward", or "backward"
                          ;Centered: Looks for obs within dt on each side of best-track time.
                          ;Forward: Looks for obs within dt after the best-track time.
                          ;Backward: Looks for obs within dt prior to the best-track time.
