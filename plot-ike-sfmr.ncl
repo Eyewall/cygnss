@@ -72,8 +72,22 @@ do i=0,nlines-1
 
       ;Call function to compute azimuthal average
       vavg = azimuthal_avg(lat,lon,sfmrlat,sfmrlon,sfmrv,radius,dr,1)
-      print( vavg)
-      exit
+
+      ;Compute IKE
+      vdimsizes = dimsizes(vavg)
+      if(dimsizes(vdimsizes).eq.0)then  ;Rank is 0 --> Average was computed around full circle
+         ike = calc_ike(vavg,vavg&radius)
+         ikeTJ = decimalPlaces(ike/1e12,3,True)
+         ike_total = ike
+      else
+         ike = new(vdimsizes(0),"float")
+         do j=0,vdimsizes(0)-1
+            ike(j) = calc_ike(vavg(j,:),vavg&radius)
+         end do
+         ikeTJ = decimalPlaces(ike/1e12,3,True)
+         ike_total = sum(ikeTJ)
+         print( ike_total)
+      end if
    end if
    ;Call procedure to compute and plot wind profile and IKE
 ;   plot_ike(stormname,stormid,basin,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,lat,lon,dt,type,dr,uncert_limit)

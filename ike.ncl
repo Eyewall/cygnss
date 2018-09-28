@@ -28,7 +28,7 @@ rho = 1.0
 km_to_m = 1000.
 pi = atan(1) * 4
 
-radii = radii*km_to_m
+radii_m = radii*km_to_m
 
 ;For now, assume Rankine vortex
 ;radii = fspan(1,1000,1000)*km_to_m
@@ -47,21 +47,21 @@ if(dimsizes(winds).ne.dimsizes(radii))then
 end if
 
 ;Sort the radii into ascending order, and adjust wind array
-radii!0 = "indices"
-radii&indices = ispan(0,dimsizes(radii)-1,1)
-qsort( radii)
-windprofile = winds(radii&indices)
+radii_m!0 = "indices"
+radii_m&indices = ispan(0,dimsizes(radii_m)-1,1)
+qsort( radii_m)
+windprofile = winds(radii_m&indices)
 
 ;Treat each wind as representing a constant value for the area
 ;halfway from the previous grid point to halfway to the next grid point.
 nbins = dimsizes(winds)
 areas = new(nbins,"float")
 do i=0,nbins-2
-   router = 0.5*(radii(i)+radii(i+1))
+   router = 0.5*(radii_m(i)+radii_m(i+1))
    if(i.eq.0)then
-      rinner = 0.5*(radii(i)+0)
+      rinner = 0.5*(radii_m(i)+0)
    else
-      rinner = 0.5*(radii(i)+radii(i-1))
+      rinner = 0.5*(radii_m(i)+radii_m(i-1))
    end if
    areas(i) = pi*(router^2-rinner^2) 
 end do
