@@ -126,7 +126,7 @@ if(nparams.eq.2)then
       end if
    end do
    ;Plot the cost function with a dot at the minimum
-   wks = gsn_open_wks("png","/jm13/pduran/web/cygnss/parametric/costfunction.png")
+   wks = gsn_open_wks("png","/raid1/pduran/jm13/web/cygnss/parametric/costfunction.png")
    gsn_define_colormap(wks,"WhiteBlueGreenYellowRed")
    res = True
    res@cnFillOn = True
@@ -155,7 +155,7 @@ if(nparams.eq.2)then
    draw(plot)
    frame(wks)
    ;Plot the observed winds and the parametric wind profile
-   wks2 = gsn_open_wks("png","/jm13/pduran/web/cygnss/parametric/2parametermodel.png")
+   wks2 = gsn_open_wks("png","/raid1/pduran/jm13/web/cygnss/parametric/2parametermodel.png")
    res2 = True
    res2@gsnMaximize = True
    res2@gsnLeftString = "CYGNSS observations (dots) and 2-parameter modeled wind profile (line)"
@@ -305,7 +305,7 @@ else
       ;----------------------------------------------------;
       ;PLOT THE PARAMETRIC WIND PROFILE AND THE INPUT WINDS
       ;----------------------------------------------------;
-      wks = gsn_open_wks("png","/jm13/pduran/web/cygnss/parametric/"+unixi+".png")
+      wks = gsn_open_wks("png","/raid1/pduran/jm13/web/cygnss/parametric/"+unixi+".png")
       res = True
       res@gsnMaximize = True
       res@gsnLeftString = "CYGNSS observations (dots) and parameteric wind profile (line) for iteration "+unixi

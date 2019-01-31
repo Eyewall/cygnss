@@ -1,8 +1,8 @@
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
-load "/jm13/pduran/ncl/functions/tools.ncl"
-load "/jm13/pduran/ncl/radar/scripts/functions/rangering.ncl"
+load "/raid1/pduran/jm13/ncl/functions/tools.ncl"
+load "/raid1/pduran/jm13/ncl/radar/scripts/functions/rangering.ncl"
 
 ;---------------------------------------------
 ; hail-reports-spec-points.ncl 
@@ -21,10 +21,10 @@ maxtimediff  = 30    ;Minutes
 searchradius = 50  ;km
 ;Ignore Block IIF GPS vehicles?
 ignoreblockIIF = True
-haildir = "/jm13/pduran/hail-reports/"
+haildir = "/raid1/pduran/jm13/hail-reports/"
 outdir  = haildir
-cygtimefile = "/jm13/pduran/cygnss/2018/level1/cygtimes.txt"
-cygdir = "/jm13/pduran/cygnss/2018/level1/neededfiles/"
+cygtimefile = "/raid1/pduran/jm13/cygnss/2018/level1/cygtimes.txt"
+cygdir = "/raid1/pduran/jm13/cygnss/2018/level1/neededfiles/"
 
 ;------------------------------------------------;
 ;GET CYGNSS FILE NAME AND OBSERVATION BLOCK TIMES;

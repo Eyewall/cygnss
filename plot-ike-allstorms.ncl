@@ -1,9 +1,9 @@
-load "/jm13/pduran/ncl/cygnss/filter_cygnss.ncl"
-load "/jm13/pduran/ncl/cygnss/map_cygnss.ncl"
-load "/jm13/pduran/ncl/cygnss/read_sfmr.ncl"
-load "/jm13/pduran/ncl/cygnss/map_sfmr.ncl"
-load "/jm13/pduran/ncl/cygnss/plot_ike.ncl"
-load "/jm13/pduran/ncl/cygnss/montage_cygnss.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/filter_cygnss.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/map_cygnss.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/read_sfmr.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/map_sfmr.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/plot_ike.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/montage_cygnss.ncl"
 
 bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
 basin = "NATL"
@@ -26,7 +26,7 @@ wind_rad_compare_limit = 20  ;Filter out all obs that depart from the wind speed
 ;GET BEST TRACK INFORMATION;
 ;--------------------------;
 if(bttype.eq.0)then
-   trakfile = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
+   trakfile = "/raid1/pduran/jm13/best-tracks/hurdat2-2017.txt"
    ;Get list of all storms in the file by finding all
    ;lines with only three columns. Then get number of
    ;storms in the file, storm IDs, and storm names.
@@ -90,7 +90,7 @@ if(bttype.eq.0)then
       end do   ;Times loop
    end do   ;Storms loop
 else  ;bttype
-   trakfile = "/jm13/pduran/best-tracks/ebtrk_atlc_2017.txt"
+   trakfile = "/raid1/pduran/jm13/best-tracks/ebtrk_atlc_2017.txt"
    btinput  = stringtochar(systemfunc("cat "+trakfile))
    nlines = toint(systemfunc("wc "+trakfile)) 
    r34int = new(4,"integer")

@@ -1,8 +1,8 @@
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
-load "/jm13/pduran/ncl/functions/tools.ncl"
-load "/jm13/pduran/ncl/radar/scripts/functions/rangering.ncl"
+load "/raid1/pduran/jm13/ncl/functions/tools.ncl"
+load "/raid1/pduran/jm13/ncl/radar/scripts/functions/rangering.ncl"
 
 ;---------------------------------------------
 ; plot-spec-points-radar.ncl 
@@ -14,9 +14,9 @@ load "/jm13/pduran/ncl/radar/scripts/functions/rangering.ncl"
 ; points over radar imagery.
 ;---------------------------------------------
 
-indir = "/jm13/pduran/hail-reports/"
-outdir= "/jm13/pduran/web/cygnss/specpointmaps/"
-raddir= "/jm13/pduran/radar/data/netcdf/"
+indir = "/raid1/pduran/jm13/hail-reports/"
+outdir= "/raid1/pduran/jm13/web/cygnss/specpointmaps/"
+raddir= "/raid1/pduran/jm13/radar/data/netcdf/"
 timeunits = "seconds since 2016-1-1 00:00:00"
 ;url   = "http://thredds-aws.unidata.ucar.edu/thredds/radarServer/nexrad/level2/S3/"
 
@@ -26,7 +26,7 @@ convert   = pi/180.
 ;-------------------------;
 ;READ NEXRAD LOCATION FILE;
 ;-------------------------;
-nexradlocfile = "/jm13/pduran/radar/nexrad-stations.TXT"
+nexradlocfile = "/raid1/pduran/jm13/radar/nexrad-stations.TXT"
 stnid  = systemfunc("cat "+nexradlocfile+" | sed 1,2d | awk '{print $2}'")
 radlat = tofloat(systemfunc("cat "+nexradlocfile+" | sed 1,2d | cut -c107-114"))
 radlon = tofloat(systemfunc("cat "+nexradlocfile+" | sed 1,2d | cut -c117-126"))

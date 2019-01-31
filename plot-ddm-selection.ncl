@@ -1,6 +1,6 @@
 ;Set CYGNSS file to use and output directory
-cygdir = "/jm13/pduran/cygnss/2018/level1/"
-outdir  = "/jm13/pduran/web/cygnss/ddm/analog-power/"
+cygdir = "/raid1/pduran/jm13/cygnss/2018/level1/"
+outdir  = "/raid1/pduran/jm13/web/cygnss/ddm/analog-power/"
 ;cygfilename  = "cyg01.ddmi.s20170512-000000-e20170512-235959.l1.power-brcs.a20.d20.nc"
 ;cygfilename  = "cyg01.ddmi.s20180319-000000-e20180319-235959.l1.power-brcs.a20.d20.nc"
 
@@ -14,7 +14,7 @@ cygfilename  = "cyg03.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d
 ;cygfilename = "cyg06.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
 ;cygfilename  = "cyg07.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
 hailfilename = "180310_rpts_raw_hail.csv_01"
-;Can find these values in the filenames contained within /jm13/pduran/web/cygnss/specpointmaps/*/
+;Can find these values in the filenames contained within /raid1/pduran/jm13/web/cygnss/specpointmaps/*/
 ;mintime = 69154247
 ;maxtime = 69154262
 mintime = 69153766
@@ -102,7 +102,7 @@ ctime1d@units = cygtime@units
 delete([/ctime_conform,cyglat,cyglon,spdelayrow,spdoppcol,spdelay,spdopp/])
 
 ;Get error conditions
-errorstrings = systemfunc("cat /nfs/jm13/pduran/cygnss/errorconditions.txt")
+errorstrings = systemfunc("cat /nfs/raid1/pduran/jm13/cygnss/errorconditions.txt")
 
 ;Convert CYGNSS time to common units
 ctime = round(cd_convert(ctime1d,timeunits),3)

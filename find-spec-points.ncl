@@ -1,8 +1,8 @@
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
-load "/jm13/pduran/ncl/functions/tools.ncl"
-load "/jm13/pduran/ncl/radar/scripts/functions/rangering.ncl"
+load "/raid1/pduran/jm13/ncl/functions/tools.ncl"
+load "/raid1/pduran/jm13/ncl/radar/scripts/functions/rangering.ncl"
 
 ;---------------------------------------------
 ; find-spec-points.ncl 
@@ -44,8 +44,8 @@ lon = -80.19
 searchradius = 200  ;Units km
 ;Ignore Block IIF GPS vehicles?
 ignoreblockIIF = True
-cygtimefile = "/jm13/pduran/cygnss/"+yyyy1+"/level"+datalevel+"/cygtimes.txt"
-outdir = "/jm13/pduran/web/cygnss/specpointmaps/miami2/searchrad-"+searchradius+"km/"
+cygtimefile = "/raid1/pduran/jm13/cygnss/"+yyyy1+"/level"+datalevel+"/cygtimes.txt"
+outdir = "/raid1/pduran/jm13/web/cygnss/specpointmaps/miami2/searchrad-"+searchradius+"km/"
 system("mkdir "+outdir)
 
 ;------------------------------------------------;
@@ -80,7 +80,7 @@ time2 := cd_inv_calendar(year2,mon2,day2,hour2,minu2,conform(year2,0,-1),timeuni
 ;FIND SPECULAR POINTS WITHIN TIME RANGE AND;
 ;SEARCH RADIUS.                            ;
 ;------------------------------------------;
-cygfiles = systemfunc("ls /jm13/pduran/cygnss/"+yyyy1+"/level"+datalevel+"/*nc")
+cygfiles = systemfunc("ls /raid1/pduran/jm13/cygnss/"+yyyy1+"/level"+datalevel+"/*nc")
 nfiles = dimsizes(cygfiles)
 ;Loop through CYGNSS files
 do i=0,nfiles-1

@@ -1,7 +1,7 @@
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
-load "/jm13/pduran/ncl/functions/tools.ncl"
+load "/raid1/pduran/jm13/ncl/functions/tools.ncl"
 
 ;---------------------------------------------
 ; process_cygnss.ncl 
@@ -20,10 +20,10 @@ load "/jm13/pduran/ncl/functions/tools.ncl"
 interpolate = 0   ;0=Do not interpolate best track; 1=Interpolate best track
 dt          = 18000  ;Time spacing to interpolate best track to (seconds)
 datalevel   = 2
-trakfile    = "/jm13/pduran/best-tracks/hurdat2-2017.txt"
-cygdir      = "/jm13/pduran/cygnss/2017/level"+datalevel+"/"
-cygtimefile = "/jm13/pduran/cygnss/2017/level"+datalevel+"/cygtimes.txt"
-stormdir    = "/jm13/pduran/cygnss/2017/stormfiles/"
+trakfile    = "/raid1/pduran/jm13/best-tracks/hurdat2-2017.txt"
+cygdir      = "/raid1/pduran/jm13/cygnss/2017/level"+datalevel+"/"
+cygtimefile = "/raid1/pduran/jm13/cygnss/2017/level"+datalevel+"/cygtimes.txt"
+stormdir    = "/raid1/pduran/jm13/cygnss/2017/stormfiles/"
 searchradius= 300  ;Units km
 ignoreblockIIF = True ;Ignore Block IIF GPS vehicles?
 

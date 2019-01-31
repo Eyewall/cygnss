@@ -24,8 +24,8 @@ radius = 1000      ;Search radius (km)
 dt = 60*60*3      ;Time within which to search (s)
 dthr = tostring(dt/3600)
 
-cygdir = "/jm13/pduran/cygnss/"+YYYY+"/level2/"
-outdir = "/jm13/pduran/web/cygnss/erc-cases/maps/"+NAME+"-"+ID+"/"
+cygdir = "/raid1/pduran/jm13/cygnss/"+YYYY+"/level2/"
+outdir = "/raid1/pduran/jm13/web/cygnss/erc-cases/maps/"+NAME+"-"+ID+"/"
 
 system("mkdir "+outdir)
 
@@ -66,7 +66,7 @@ lons = mod((lons+180),360) - 180
 lons@valid_range := "(-180, 180)"
 
 ;Get storm track data
-trackfilename = systemfunc("ls /jm13/pduran/cygnss/"+YYYY+"/stormfiles/"+NAME+"-searchrad300km.nc") 
+trackfilename = systemfunc("ls /raid1/pduran/jm13/cygnss/"+YYYY+"/stormfiles/"+NAME+"-searchrad300km.nc") 
 trackfile = addfile(trackfilename,"r")
 tracktimes:= trackfile->tracktime
 stormlats := trackfile->stormlat

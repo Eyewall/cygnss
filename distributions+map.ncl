@@ -1,7 +1,7 @@
 ;Set CYGNSS file to use and output directory
-cygdir = "/jm13/pduran/cygnss/2018/level1/"
+cygdir = "/raid1/pduran/jm13/cygnss/2018/level1/"
 cygfilename = "cyg03.ddmi.s20180413-000000-e20180413-235959.l1.power-brcs.a20.d20.nc"
-outdir = "/jm13/pduran/web/cygnss/histogram/"
+outdir = "/raid1/pduran/jm13/web/cygnss/histogram/"
 toplot = 1 ;0=Bistatic radar cross section; 1=Analog power; 2=Effective scattering area
 ;Ignore Block IIF satellites?
 ignoreblockIIF = True

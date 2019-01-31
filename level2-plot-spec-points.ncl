@@ -12,8 +12,8 @@
 ;------------------------------------------------
 
 
-cygdir = "/jm13/pduran/cygnss/"
-outdir = "/jm13/pduran/web/cygnss/stormmaps/"
+cygdir = "/raid1/pduran/jm13/cygnss/"
+outdir = "/raid1/pduran/jm13/web/cygnss/stormmaps/"
 year   = 2017
 radius = 300      ;Search radius (km)
 

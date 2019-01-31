@@ -1,5 +1,5 @@
-load "/jm13/pduran/ncl/cygnss/parametric-model-morris+ruf.ncl"
-load "/jm13/pduran/ncl/cygnss/ike.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/parametric-model-morris+ruf.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/ike.ncl"
 
 ;------------------------------------------------
 ; compute-ike.ncl
@@ -25,8 +25,8 @@ HH   = "06"
 mm   = "00"
 ss   = "00"
 radius = 200      ;Search radius (km)
-cygdir = "/jm13/pduran/cygnss/"+YYYY+"/level2/"
-outdir = "/jm13/pduran/web/cygnss/erc-cases/ike-windprofiles/"+NAME+"-"+ID+"/"
+cygdir = "/raid1/pduran/jm13/cygnss/"+YYYY+"/level2/"
+outdir = "/raid1/pduran/jm13/web/cygnss/erc-cases/ike-windprofiles/"+NAME+"-"+ID+"/"
 dt = 60*60*3      ;Time within which to search (s)
 dthr = tostring(dt/3600)
 
@@ -73,7 +73,7 @@ lons = mod((lons+180),360) - 180
 lons@valid_range := "(-180, 180)"
 
 ;Get storm track data
-trackfilename = systemfunc("ls /jm13/pduran/cygnss/"+YYYY+"/stormfiles/"+NAME+"-searchrad300km.nc") 
+trackfilename = systemfunc("ls /raid1/pduran/jm13/cygnss/"+YYYY+"/stormfiles/"+NAME+"-searchrad300km.nc") 
 trackfile = addfile(trackfilename,"r")
 tracktimes:= trackfile->tracktime
 stormlats := trackfile->stormlat

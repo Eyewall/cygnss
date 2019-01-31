@@ -2,11 +2,11 @@ undef("montage_cygnss")
 procedure montage_cygnss(NAME,ID,YYYY,MM,DD,HH,mm,ss,searchtype,radius,dt,sfmroutvartype)
 begin
 
-cygdir  = "/jm13/pduran/web/cygnss/maps/"+searchtype+"/"+NAME+"-"+ID+"/"
-sfmrdir = "/jm13/pduran/web/sfmr/maps/"+searchtype+"/"+NAME+"-"+ID+"/" 
-montagedir = "/jm13/pduran/web/cygnss/ike-windprofiles+maps_montage/"+searchtype+"/"+radius+"km/"
-montagefilterdir = "/jm13/pduran/web/cygnss/filtered-windspeed-maps/"+searchtype+"/"+radius+"km/"
-montageuncertdir = "/jm13/pduran/web/cygnss/windspeed+uncertainty-maps/"+searchtype+"/"+radius+"km/"
+cygdir  = "/raid1/pduran/jm13/web/cygnss/maps/"+searchtype+"/"+NAME+"-"+ID+"/"
+sfmrdir = "/raid1/pduran/jm13/web/sfmr/maps/"+searchtype+"/"+NAME+"-"+ID+"/" 
+montagedir = "/raid1/pduran/jm13/web/cygnss/ike-windprofiles+maps_montage/"+searchtype+"/"+radius+"km/"
+montagefilterdir = "/raid1/pduran/jm13/web/cygnss/filtered-windspeed-maps/"+searchtype+"/"+radius+"km/"
+montageuncertdir = "/raid1/pduran/jm13/web/cygnss/windspeed+uncertainty-maps/"+searchtype+"/"+radius+"km/"
 
 dthr = tostring(dt/3600)
 

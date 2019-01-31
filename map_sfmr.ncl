@@ -17,7 +17,7 @@
 ; HH: Hour (string)
 ; mm: Minutes (string)
 ; ss: Seconds (string)
-; vmaxkt: Maximum wind speed in knots (string)
+; vmax: Maximum wind speed in m/s (integer)
 ; rmw: Radius of maximum wind (string)
 ; R34: Maximum radius of 34-kt winds (km; float)
 ; R50: Maximum radius of 50-kt winds (km; float)
@@ -33,16 +33,16 @@
 ;------------------------------------------------
 
 undef("map_sfmr")
-procedure map_sfmr(NAME,ID,YYYY,MM,DD,HH,mm,ss,vmaxkt,rmw,r34,r50,r64,stormlat,stormlon,radius,v,lat,lon,dt,searchtype)
+procedure map_sfmr(NAME,ID,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,stormlat,stormlon,radius,v,lat,lon,dt,searchtype)
 local R34, R50, R64, vplot, latsplot, lonsplot
 begin
 
 print( "Plotting map of SFMR observations...")
 
 dthr = tostring(dt/3600)       ;Convert dt to hours
-vmax = toint(vmaxkt*0.514444)  ;Convert vmax to m/s
+vmaxkt = tostring(round(vmax*1.94384,3)) ;Convert vmax to kt
 
-outdir = "/jm13/pduran/web/sfmr/maps/"+searchtype+"/"+NAME+"-"+ID+"/"
+outdir = "/raid1/pduran/jm13/web/sfmr/maps/"+searchtype+"/"+NAME+"-"+ID+"/"
 
 ;If output directory doesn't exist, create it.
 dirtest = systemfunc("test -d "+outdir+"; echo $?")
@@ -86,10 +86,11 @@ mapres@gsnLeftStringFontHeightF = 0.013
 mapres@gsnLeftStringOrthogonalPosF = -0.0015
 mapres@gsnPaperOrientation = "portrait"
 mapres@mpDataBaseVersion = "HighRes"
-mapres@mpMinLatF = min((/stormlat,min(latsplot)/))-0.5
-mapres@mpMinLonF = min((/stormlon,min(lonsplot)/))-0.5
-mapres@mpMaxLatF = max((/stormlat,max(latsplot)/))+0.5
-mapres@mpMaxLonF = max((/stormlon,max(lonsplot)/))+0.5
+degoffset = radius/111.
+mapres@mpMinLatF = stormlat-degoffset;min((/stormlat,min(latsplot)/))-0.5
+mapres@mpMinLonF = stormlon-degoffset;min((/stormlon,min(lonsplot)/))-0.5
+mapres@mpMaxLatF = stormlat+degoffset;max((/stormlat,max(latsplot)/))+0.5
+mapres@mpMaxLonF = stormlon+degoffset;max((/stormlon,max(lonsplot)/))+0.5
 ;mapres@mpMinLatF = 21.5 
 ;mapres@mpMinLonF = -75.5
 ;mapres@mpMaxLatF = 22.5
@@ -292,6 +293,19 @@ end if
 end if
 end if
 dum1 := gsn_add_text(mapwks,map,symb,stormlon,stormlat,txres)
+
+;Add range rings
+;circles = geolocation_circle(stormlat,stormlon,ispan(10,200,10),1,360,False)
+;circlats = circles[0]
+;circlons = circles[1]
+;circdims = dimsizes(circlats)
+;ncircs = circdims(1)
+;circdum = new(ncircs,"graphic")
+;do i=0,ncircs-1
+;   circres = True
+;   circres@gsLineThicknessF = 2.
+;   circdum(i) = gsn_add_polyline(mapwks,map,circlons(0,i,:),circlats(0,i,:),circres)
+;end do
 draw(map)
 frame(mapwks)
 

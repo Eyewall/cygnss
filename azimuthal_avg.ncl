@@ -19,15 +19,25 @@
 ; vals: Array of values to average
 ; maxrad: Outer radius
 ; dr: Width of radial bins
-; opt: 0=Average around full 360 deg; 1=Average around 4 quadrants (90 deg each)
+; opt: "full"=Average around full 360 deg; "quadrant"=Average around 4 quadrants (90 deg each)
+; interpgap: Maximum gap (km) across which to interpolate the radial wind profile.
 ;------------------------------------------------
 
 undef("azimuthal_avg")
 function azimuthal_avg(centerlat:numeric,centerlon:numeric,lats:numeric,lons:numeric,\
-                       vals:numeric,maxrad:numeric,dr:numeric,opt:integer)
+                       vals:numeric,maxrad:numeric,dr:numeric,opt:string,interpgap:numeric)
 begin
 
+if(interpgap.ne.0.and.opt.eq."full")then
+   print( "azimuthal_avg: INTERPOLATION NOT SUPPORTED FOR FULL AZIMUTHAL AVERAGES")
+   exit
+end if
+
 pi = atan(1)*4
+
+;Get radii and azimuths of each observation from attribute attached to velocity array
+obsradii = vals@radii
+obsazis  = vals@azimuths
 
 ;Radial grid defining cutoffs for averages
 nrads = maxrad/dr
@@ -36,65 +46,43 @@ radii = fspan(dr,maxrad,nrads)
 ;Radial grid where averages are valid (halfway between radii)
 radout = radii-(dr/2)
 
-;Compute distances from center position for each observation
-Robs = gc_latlon(centerlat,centerlon,lats,lons,2,4)
-
-;Get indices for each quadrant
-NEquad = ind(lats.gt.centerlat.and.lons.ge.centerlon)
-SEquad = ind(lats.le.centerlat.and.lons.ge.centerlon)
-SWquad = ind(lats.lt.centerlat.and.lons.lt.centerlon)
-NWquad = ind(lats.ge.centerlat.and.lons.lt.centerlon)
-
-;Compute azimuths from storm center for each observation
-;(0 deg=North; 90 deg=East; 180 deg=South; 270 deg=West)
-;First compute x component of radius for each observation
-;and then use the radii and x components to get azimuths.
-nobs = dimsizes(Robs)
-xcomps = new(nobs,"float")
-do i=0,nobs-1
-   xcomps(i) = gc_latlon(centerlat,centerlon,centerlat,lons(i),2,4)
-end do
-
-;Compute azimuths quadrant-by-quadrant
-azis = new(dimsizes(lats),"float")
-arcsin = asin(xcomps/Robs)*(180/pi)
-arccos = acos(xcomps/Robs)*(180/pi)
-azis(NEquad) = arcsin(NEquad)
-azis(SEquad) = 90 + arccos(SEquad)
-azis(SWquad) = 270 - arccos(SWquad)
-azis(NWquad) = 270 + arccos(NWquad)
-
-if(opt.eq.0)then
+if(opt.eq."full")then
    ;Loop through radial bins and compute averages and standard deviation
    nobs       := new(nrads,"float")
    avgs        = new(nrads,"float")
    sigma       = new(nrads,"float")
    obs_density = new(nrads,"float")
    do i=0,nrads-1
-      minrad = i*dr
-      maxrad = (i+1)*dr
-      indices := ind(Robs.ge.minrad.and.Robs.lt.maxrad)
+      innerrad = i*dr
+      outerrad = (i+1)*dr
+      indices := ind(obsradii.ge.innerrad.and.obsradii.lt.outerrad)
       if(all(ismissing(indices)))then
+         continue
+      end if
+      if(all(ismissing(vals(indices))))then
          continue
       end if
       nobs(i)  = dimsizes(indices)
       avgs(i)  = avg(vals(indices))
       sigma(i) = stddev(vals(indices))
       ;Compute observation density
-      A_outer = pi*maxrad^2
-      A_inner = pi*minrad^2
-      A_bin = A_outer - A_inner
+      A_bin = pi*(outerrad^2-innerrad^2)
       obs_density(i) = nobs(i)/A_bin
    end do
+   A_total = pi*outerrad^2
+   obs_total = sum(nobs)
+   obs_density_domain = obs_total/A_total
    avgs!0 = "radius"
    avgs&radius = radout
    avgs@standard_deviation = sigma
    avgs@num_obs = nobs
    avgs@obs_density = obs_density
+   avgs@obs_density_domain = obs_density_domain
    avgs@comment  = "obs_density = number of obs per square km in each radial bin"
-   avgs@comment2 = "averages are valid at the midpoint of each radial bin"
+   avgs@comment2 = "obs_density_domain = # of obs per square km in whole domain"
+   avgs@comment3 = "averages are valid at the midpoint of each radial bin"
    return(avgs)
-else
+elseif(opt.eq."quadrant")then
    ;Loop through azimuthal and radial bins and compute averages and standard deviation
    nobs       := new((/4,nrads/),"float")
    avgs        = new((/4,nrads/),"float")
@@ -103,22 +91,33 @@ else
    do i=0,3
       minazi = i*90
       maxazi = minazi + 90
-      do j=0,nrads
-         minrad = j*dr
-         maxrad = (j+1)*dr
-         indices := ind(Robs.ge.minrad.and.Robs.lt.maxrad.and.azis.ge.minazi.and.azis.lt.maxazi)
+      do j=0,nrads-1
+         innerrad = j*dr
+         outerrad = (j+1)*dr
+         indices := ind(obsradii.ge.innerrad.and.obsradii.lt.outerrad.and.obsazis.ge.minazi.and.obsazis.lt.maxazi)
          if(all(ismissing(indices)))then
+            continue
+         end if
+         if(all(ismissing(vals(indices))))then
             continue
          end if
          nobs(i,j)  = dimsizes(indices)
          avgs(i,j)  = avg(vals(indices))
          sigma(i,j) = stddev(vals(indices))
-         A_outer = pi*maxrad^2
-         A_inner = pi*minrad^2
-         A_bin = A_outer - A_inner
+         A_bin = 0.25*pi*(outerrad^2-innerrad^2) ;Mult. by 0.25 since this is a quadrant
          obs_density(i,j) = nobs(i,j)/A_bin
       end do
    end do
+
+   ;Interpolate across gaps, if desired.
+   if(interpgap.ne.0)then
+      maxpts = (interpgap/dr)-1
+      avgs = linmsg(avgs,(/0,maxpts/))
+   end if
+
+   A_total = pi*outerrad^2
+   obs_total = sum(nobs)
+   obs_density_domain = obs_total/A_total
    avgs!0 = "azimuth"
    avgs!1 = "radius"
    avgs&azimuth = (/45,135,225,315/)
@@ -126,9 +125,13 @@ else
    avgs@standard_deviation = sigma
    avgs@num_obs = nobs
    avgs@obs_density = obs_density
+   avgs@obs_density_domain = obs_density_domain
    avgs@comment = "obs_density = number of obs per square km in each radial bin"
-   avgs@comment2 = "Averages are valid at the midpoint of each radial and azimuthal bin"
-   avgs@comment3 = "For azimuths, 0 deg is North, 90 deg is East, etc."
+   avgs@comment2 = "obs_density_domain = # of obs per square km in whole domain"
+   avgs@comment3 = "Averages are valid at the midpoint of each radial and azimuthal bin"
+   avgs@comment4 = "For azimuths, 0 deg is North, 90 deg is East, etc."
+   avgs@comment5 = "interpolation performed across gaps in wind profiles smaller than "+interpgap
    return(avgs)
 end if   ;opt
+
 end

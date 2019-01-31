@@ -1,8 +1,8 @@
 ;Set CYGNSS file to use and output directory
-cygdir = "/jm13/pduran/cygnss/2018/level1/"
+cygdir = "/raid1/pduran/jm13/cygnss/2018/level1/"
 ;cygfilename = "cyg03.ddmi.s20180413-000000-e20180413-235959.l1.power-brcs.a20.d20.nc"
 cygfilename = "cyg07.ddmi.s20180311-000000-e20180311-235959.l1.power-brcs.a20.d20.nc"
-outdir = "/jm13/pduran/web/cygnss/integratedpower/"
+outdir = "/raid1/pduran/jm13/web/cygnss/integratedpower/"
 toplot = 1 ;0=Bistatic radar cross section; 1=Analog power; 2=Effective scattering area
 ;Ignore Block IIF satellites?
 ignoreblockIIF = True
@@ -87,7 +87,7 @@ lons = cyglon(cygtimeind,:)
 brcsthistime = brcs(cygtimeind,3,:,:)
 integratedpowethistime = dim_sum(brcsthistime)
 ;Get error conditions
-errorstrings = systemfunc("cat /nfs/jm13/pduran/cygnss/errorconditions.txt")
+errorstrings = systemfunc("cat /nfs/raid1/pduran/jm13/cygnss/errorconditions.txt")
 bitmaskthistime = bitmask(cygtimeind,3,:)
 qcflagthistime = qcflags(cygtimeind,3)
 flagmasks32bit = array_append_record(flagmasks,(/0,0,0,0,0/),0)
@@ -156,7 +156,7 @@ printVarSummary( sp_lat)
 printVarSummary( sp_lon)
 
 ;Write first three variables to output file
-ncoutfile = "/jm13/pduran/ncl/cygnss/"+cygfilename+"-"+"integrated_power.hdf"
+ncoutfile = "/raid1/pduran/jm13/ncl/cygnss/"+cygfilename+"-"+"integrated_power.hdf"
 system("rm "+ncoutfile)
 fout = addfile(ncoutfile,"c")
 print( "Writing output file.")

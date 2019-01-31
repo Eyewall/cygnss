@@ -3,8 +3,6 @@
 ; Patrick Duran
 ; 08 August 2018
 ;
-; Adapted from code received from Dan Cecil on hiraddata:
-; /usr/people/pduran/progs/idl/cygnss_proposal/ike_fcn.pro
 ; Computes integrated kinetic energy (IKE) from
 ; a specified wind profile.
 ;
@@ -17,28 +15,18 @@
 ;ARGUMENTS
 ;---------
 ;winds: Wind speeds (m/s)
-;radii: Radii that corresponds to winds (km)
+;radii: Radii that correspond to wind observations (km)
+;opt: Valid options: "full" or "quadrant"
 ;------------------------------------------------
 
 undef("calc_ike")
-function calc_ike(winds:numeric,radii:numeric)
+function calc_ike(winds:numeric,radii:numeric,opt:string)
 begin
 
-rho = 1.0
-km_to_m = 1000.
+rho = 1.15  ;Constant density suggested by Holland (1980); Morris and Ruf (2017)
 pi = atan(1) * 4
 
-radii_m = radii*km_to_m
-
-;For now, assume Rankine vortex
-;radii = fspan(1,1000,1000)*km_to_m
-;winds = new(dimsizes(radii),"float")
-;vmax = 50
-;rmax = 25*km_to_m
-;ind1 = ind(radii.lt.rmax)
-;ind2 = ind(radii.ge.rmax)
-;winds(ind1) = vmax*radii(ind1)/rmax
-;winds(ind2) = vmax*(rmax/radii(ind2))^0.5
+radii_m = radii*1000.
 
 ;Ensure that input wind and radius arrays have the same size
 if(dimsizes(winds).ne.dimsizes(radii))then
@@ -46,14 +34,14 @@ if(dimsizes(winds).ne.dimsizes(radii))then
    exit
 end if
 
-;Sort the radii into ascending order, and adjust wind array
+;Sort the radii into ascending order, and adjust wind array accordingly
 radii_m!0 = "indices"
 radii_m&indices = ispan(0,dimsizes(radii_m)-1,1)
 qsort( radii_m)
 windprofile = winds(radii_m&indices)
 
 ;Treat each wind as representing a constant value for the area
-;halfway from the previous grid point to halfway to the next grid point.
+;halfway from the previous grid point to halfway to the next grid point
 nbins = dimsizes(winds)
 areas = new(nbins,"float")
 do i=0,nbins-2
@@ -63,10 +51,16 @@ do i=0,nbins-2
    else
       rinner = 0.5*(radii_m(i)+radii_m(i-1))
    end if
-   areas(i) = pi*(router^2-rinner^2) 
+   ;Compute IKE using full annuli
+   if(opt.eq."full")then
+      areas(i) = pi*(router^2-rinner^2)
+   ;Compute IKE using quarter annuli
+   else if(opt.eq."quadrant")then
+      areas(i) = 0.25*pi*(router^2-rinner^2)
+   end if
+   end if
 end do
-
-energies = 1.*rho*areas*windprofile
+energies = rho*areas*windprofile^2
 ike = sum(energies)
 ike@units = "Joules"
 return(ike)

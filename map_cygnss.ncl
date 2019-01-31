@@ -51,7 +51,7 @@ print( "Plotting map of CYGNSS observations...")
 dthr = tostring(dt/3600)       ;Convert dt to hours
 vmax = toint(vmaxkt*0.514444)  ;Convert vmax to m/s
 
-outdir = "/jm13/pduran/web/cygnss/maps/"+searchtype+"/"+NAME+"-"+ID+"/"
+outdir = "/raid1/pduran/jm13/web/cygnss/maps/"+searchtype+"/"+NAME+"-"+ID+"/"
 
 ;If output directory doesn't exist, create it.
 dirtest = systemfunc("test -d "+outdir+"; echo $?")
@@ -117,10 +117,11 @@ do j=0,2
    mapres@gsnLeftStringOrthogonalPosF = -0.0015
    mapres@gsnPaperOrientation = "portrait"
    mapres@mpDataBaseVersion = "HighRes"
-   mapres@mpMinLatF = min((/stormlat,min(latsplot)/))-0.5
-   mapres@mpMinLonF = min((/stormlon,min(lonsplot)/))-0.5
-   mapres@mpMaxLatF = max((/stormlat,max(latsplot)/))+0.5
-   mapres@mpMaxLonF = max((/stormlon,max(lonsplot)/))+0.5
+   degoffset = radius/111.
+   mapres@mpMinLatF = stormlat-degoffset;min((/stormlat,min(latsplot)/))-0.5
+   mapres@mpMinLonF = stormlon-degoffset;min((/stormlon,min(lonsplot)/))-0.5
+   mapres@mpMaxLatF = stormlat+degoffset;max((/stormlat,max(latsplot)/))+0.5
+   mapres@mpMaxLonF = stormlon+degoffset;max((/stormlon,max(lonsplot)/))+0.5
    mapres@mpGridAndLimbOn = True
    mapres@mpGridLatSpacingF = 0.5
    mapres@mpGridLonSpacingF = 0.5

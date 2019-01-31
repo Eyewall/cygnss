@@ -1,8 +1,8 @@
-cygdir  = "/jm13/pduran/cygnss/2017/level1/"
+cygdir  = "/raid1/pduran/jm13/cygnss/2017/level1/"
 toplot = 1 ;0=Bistatic radar cross section; 1=Analog power; 2=Effective scattering area
-;cygdir  = "/jm13/pduran/cygnss/testdir/"
-haildir = "/jm13/pduran/hail-reports/"
-outdir  = "/jm13/pduran/web/cygnss/ddm/analog-power/"
+;cygdir  = "/raid1/pduran/jm13/cygnss/testdir/"
+haildir = "/raid1/pduran/jm13/hail-reports/"
+outdir  = "/raid1/pduran/jm13/web/cygnss/ddm/analog-power/"
 timeunits = "seconds since 2016-1-1 00:00:00"
 ignoreblockIIF = True
 

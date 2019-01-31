@@ -29,7 +29,7 @@ undef("read_sfmr")
 function read_sfmr(YYYY,MM,DD,HH,mm,ss,name,stormlat,stormlon,radius,dt,searchtype)
 begin
 
-dir = "/jm13/pduran/sfmr/"+YYYY+"/"
+dir = "/raid1/pduran/jm13/sfmr/"+YYYY+"/"
 
 print( "Searching for SFMR data...")
 
@@ -46,7 +46,6 @@ maxtimes      = toint(sfmrinfosplit(:,3))
 bttime = round(cd_inv_calendar(toint(YYYY),toint(MM),toint(DD),toint(HH),toint(mm),toint(ss),timeunits,0),3)
 
 ;Find the SFMR files that contain data for the selected time period and storm
-thisstorminds = ind(name.eq.stormnames)
 if(searchtype.eq."centered")then
    mintime = bttime - dt
    maxtime = bttime + dt
@@ -63,7 +62,7 @@ mintimediff = abs(mintimes - mintime)
 maxtimediff = abs(maxtimes - maxtime)
 selectioninds = ind((mintimediff.le.dt.or.maxtimediff.le.dt).and.stormnames.eq.name)
 if(all(ismissing(selectioninds)))then
-   print( "No SFMR data files available.")
+   print( "   No SFMR data files available.")
    return(0)
 end if
 sfmrfiles = sfmrfilenames(selectioninds)
@@ -128,6 +127,7 @@ sfmrday  = toint(datesplit(:,2))
 
 ;Convert SFMR dates and times to timeunits
 sfmrtime = round(cd_inv_calendar(sfmryear,sfmrmon,sfmrday,sfmrhour,sfmrminu,sfmrsec,timeunits,0),3)
+sfmrtime@units = timeunits
 
 ;Find distance between storm center and each SFMR retrieval
 dist = gc_latlon(stormlat,stormlon,lats,lons,2,4)
@@ -135,12 +135,15 @@ dist = gc_latlon(stormlat,stormlon,lats,lons,2,4)
 ;Find all of the data that fit the time constraints
 indices = ind(sfmrtime.ge.mintime.and.sfmrtime.lt.maxtime.and.dist.le.radius)
 if(all(ismissing(indices)))then
+   print( "      No SFMR data found that fit all constraints :(")
    return(0)
 else
-   sfmrv = v(indices)
+   print( "      Found "+dimsizes(v)+" SFMR wind observations that fit all constraints :)")
+   sfmrv    = v(indices)
    sfmrlats = lats(indices)
    sfmrlons = lons(indices)
-   return([/sfmrv,sfmrlats,sfmrlons/])
+   sfmrtimes= sfmrtime(indices)
+   return([/sfmrv,sfmrlats,sfmrlons,sfmrtimes/])
 end if
 
 end
