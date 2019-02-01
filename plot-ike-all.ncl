@@ -32,7 +32,7 @@ wind_rad_compare_limit = 20  ;Filter out all obs that depart from the wind speed
 opt = "quadrant"  ;Valid options: "full" or "quadrant". "quadrant" will compute IKE in each
                   ;storm quadrant independently and sum the quadrant-IKE values. "full" will
                   ;azimuthally average across full circles and compute IKE using those avgs.
-minobsdensity = 0 ;Minimum density of observations (#/km^2) required for IKE to be computed.
+;minobsdensity = 0 ;Minimum density of observations (#/km^2) required for IKE to be computed.
 interpgap = 25 ;Interpolate across gaps in the radial wind profile less than or equal to (km)
 timeunits = "seconds since 2016-1-1 00:00:00"
 trakfile = "/raid1/pduran/jm13/best-tracks/ebtrk_atlc_2017.txt_interpolated"
@@ -82,6 +82,7 @@ r34int = new(4,"integer")
 r50int = new(4,"integer")
 r64int = new(4,"integer")
 prevascfile = " "   ;Initialize variable used later to check if this is a new storm
+prevstormid = " "   ;Initialize variable used later to check if this is a new storm
 do i=0,nlines-1
    print( "###################################################################")
    print( "PROCESSING BEST-TRACK LINE "+i+" OF "+nlines+" "+systemfunc("date"))
@@ -114,9 +115,28 @@ do i=0,nlines-1
    r64@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
    print( stormname+" "+MM+"/"+DD+"/"+YYYY+" "+HH+":"+mm)
 
-   ;Set name of ASCII file to which we will print IKE values
-   ascfileinit = outdir+"/ascii/"+stormid+"-"+stormname+"-ike-"+searchtype+"-"+dthr+"h"+"-"+radius+"km-init.txt"
-   ascfileall  = outdir+"/ascii/"+stormid+"-"+stormname+"-ike-"+searchtype+"-"+dthr+"h"+"-"+radius+"km-all.txt"
+   ;Check if we have a new storm. If we do, perform a few operations.
+   if(stormid.ne.stormidprev)then
+      ;Set up ASCII files for new storm
+      ascfileinit = outdir+"/ascii/"+stormid+"-"+stormname+"-ike-"+searchtype+"-"+dthr+"h"+"-"+radius+"km-init.txt"
+      ascfileall  = outdir+"/ascii/"+stormid+"-"+stormname+"-ike-"+searchtype+"-"+dthr+"h"+"-"+radius+"km-all.txt"
+      headerstring1 = "34-kt IKE [TJ] computed using SFMR and CYGNSS data supplemented by best-track wind radii"
+      headerstring2 = "------------------------------------------- ----- ------- ------ ----- -----------"
+      headerstring3 = "YYYY MM DD HH mm ss ikeNE ikeSE ikeSW ikeNW nSFMR nCYGNSS nASCAT nSMAP obs density"
+      headerstring4 = "---- -- -- -- -- -- ----- ----- ----- ----- ----- ------- ------ ----- -----------"
+      system("echo "+headerstring1+" > "+ascfileall)
+      system("echo "+headerstring2+" >> "+ascfileall)
+      system("echo "+headerstring3+" >> "+ascfileall)
+      system("echo "+headerstring4+" >> "+ascfileall)
+      headerstring1 = "34-kt IKE [TJ] computed using only best-track wind radii"
+      system("echo "+headerstring1+" > "+ascfileinit)
+      system("echo "+headerstring2+" >> "+ascfileinit)
+      system("echo "+headerstring3+" >> "+ascfileinit)
+      system("echo "+headerstring4+" >> "+ascfileinit)
+ 
+      ;Print wind profile arrays to NetCDF files.     
+
+   end if
 
    ;Call function to create initial guess wind profile based on best-track wind radii.
    ;Proceed only if we have a best-track wind profile (sometimes we don't have all of
@@ -251,12 +271,12 @@ smapdata = 0
 
       ;Check if the observation density meets the set cutoff value.
       ;If not, skip the rest of the loop and go to next time.
-      if(ismissing(obs_density))then
-         continue
-      elseif(obs_density.lt.minobsdensity)then
-         print( "OBSERVATION DENSITY SMALLER THAN CUTOFF VALUE. NO IKE ESTIMATE CREATED.")
-         continue
-      end if
+;      if(ismissing(obs_density))then
+;         continue
+;      elseif(obs_density.lt.minobsdensity)then
+;         print( "OBSERVATION DENSITY SMALLER THAN CUTOFF VALUE. NO IKE ESTIMATE CREATED.")
+;         continue
+;      end if
 
       ;Call mapping function that creates a 4-panel plot of observations from each platform
       map_all(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,r34,r50,r64,lat,lon,radius,\
@@ -293,22 +313,6 @@ smapdata = 0
          end do
          ikeTJ = decimalPlaces(ike/1e12,3,True)
          ikeTJ_init = decimalPlaces(ike_init/1e12,3,True)
-         ;Check all quadrants for missing IKE. If missing, get last hour's estimate.
-         ;This is no longer necessary, since using the initial wind profile to fill
-         ;the gaps in observations eliminates any chance of missing IKE.
-;         if(ismissing(ikeTJ(0)).and.ascfile.eq.prevascfile)then
-;            newike = tofloat(systemfunc("tail -1 "+ascfile+" | awk '{print $7}'"))
-;            ikeTJ(0) = newike
-;         elseif(ismissing(ikeTJ(1)).and.ascfile.eq.prevascfile)then
-;            newike = tofloat(systemfunc("tail -1 "+ascfile+" | awk '{print $8}'"))
-;            ikeTJ(1) = newike
-;         elseif(ismissing(ikeTJ(2)).and.ascfile.eq.prevascfile)then
-;            newike = tofloat(systemfunc("tail -1 "+ascfile+" | awk '{print $9}'"))
-;            ikeTJ(2) = newike
-;         elseif(ismissing(ikeTJ(3)).and.ascfile.eq.prevascfile)then
-;            newike = tofloat(systemfunc("tail -1 "+ascfile+" | awk '{print $10}'"))
-;            ikeTJ(3) = newike
-;         end if
          ikeTJ = where(ikeTJ.eq.-9999,ikeTJ@_FillValue,ikeTJ)
          ikeTJ_init = where(ikeTJ_init.eq.-9999,ikeTJ_init@_FillValue,ikeTJ_init)
          ike_total = sum(ikeTJ)
@@ -323,29 +327,8 @@ smapdata = 0
       ikestringinit = sprintf("%5.2f",ikeTJ_init(0))+" "+sprintf("%5.2f",ikeTJ_init(1))+" "+sprintf("%5.2f",ikeTJ_init(2))+" "+sprintf("%5.2f",ikeTJ_init(3))
       outstringall = YYYY+" "+MM+" "+DD+" "+HH+" "+mm+" "+ss+"   "+ikestringall+" "+sprinti("%0.5i",nSFMR)+" "+sprinti("%0.7i",nCYGNSS)+" "+sprinti("%0.6i",nASCAT)+" "+sprinti("%0.6i",nSMAP)+" "+sprintf("%11.10f",obs_density)
       outstringinit = YYYY+" "+MM+" "+DD+" "+HH+" "+mm+" "+ss+"   "+ikestringinit
-      if(ascfileall.ne.prevascfile)then
-         headerstring1 = "34-kt IKE [TJ] computed using SFMR and CYGNSS data supplemented by best-track wind radii"
-         headerstring2 = "------------------------------------------- ----- ------- ------ ----- -----------"
-         headerstring3 = "YYYY MM DD HH mm ss ikeNE ikeSE ikeSW ikeNW nSFMR nCYGNSS nASCAT nSMAP obs density"
-         headerstring4 = "---- -- -- -- -- -- ----- ----- ----- ----- ----- ------- ------ ----- -----------"
-         ;Print to SFMR/CYGNSS output file
-         system("echo "+headerstring1+" > "+ascfileall)
-         system("echo "+headerstring2+" >> "+ascfileall)
-         system("echo "+headerstring3+" >> "+ascfileall)
-         system("echo "+headerstring4+" >> "+ascfileall)
-         system("echo "+outstringall+" >> "+ascfileall)
-         ;Print to init (first guess from best-track wind radii) output file
-         headerstring1 = "34-kt IKE [TJ] computed using only best-track wind radii"
-         system("echo "+headerstring1+" > "+ascfileinit)
-         system("echo "+headerstring2+" >> "+ascfileinit)
-         system("echo "+headerstring3+" >> "+ascfileinit)
-         system("echo "+headerstring4+" >> "+ascfileinit)
-         system("echo "+outstringinit+" >> "+ascfileinit)
-         prevascfile = ascfileall
-      else
-         system("echo "+outstringall+" >> "+ascfileall)
-         system("echo "+outstringinit+" >> "+ascfileinit)
-      end if
+      system("echo "+outstringall+" >> "+ascfileall)
+      system("echo "+outstringinit+" >> "+ascfileinit)
 
       ;Call procedure to plot wind profile and IKE
       print( "Plotting wind profiles...")
@@ -354,6 +337,9 @@ smapdata = 0
       ;Call procedure to montage the plots
       print( "Montaging images...")
       montage_ike(stormname,stormid,YYYY,MM,DD,HH,mm,ss,searchtype,radius,dt,opt,outdir)
+
+      ;Reset stormidprev
+      stormidprev = stormid
    end if
 end do
 ;Plot time series of IKE for each storm
@@ -383,5 +369,4 @@ do i=0,nfiles-1
    obs_density := alldata(:,14)
    plot_ike_timeseries(stormname,stormid,YYYY,MM,DD,HH,mm,ss,opt,searchtype,radius,dthr,ike_all,ike_init,nsfmr,ncygnss,nsmap,obs_density,outdir)
 end do
-;Make ascii files prettier by replacing -9999.000 with -9999.
 system("sed -i 's/-9999\.00/-9999/g' "+outdir+"/ascii/*txt")
