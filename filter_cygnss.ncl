@@ -1,6 +1,6 @@
 undef("filter_cygnss")
 function filter_cygnss(YYYY,MM,DD,HH,mm,ss,eyediam,rmw,r34,r50,r64,radius,lat,lon,\
-                       dt,searchtype,uncert_limit,wind_rad_compare_limit)
+                       dt,searchtype,uncert_limit)
 begin
 
 print( "Searching for CYGNSS data...")

@@ -48,7 +48,7 @@ radout = radii-(dr/2)
 
 if(opt.eq."full")then
    ;Loop through radial bins and compute averages and standard deviation
-   nobs       := new(nrads,"float")
+   nobs       := new(nrads,"integer")
    avgs        = new(nrads,"float")
    sigma       = new(nrads,"float")
    obs_density = new(nrads,"float")
@@ -84,7 +84,7 @@ if(opt.eq."full")then
    return(avgs)
 elseif(opt.eq."quadrant")then
    ;Loop through azimuthal and radial bins and compute averages and standard deviation
-   nobs       := new((/4,nrads/),"float")
+   nobs       := new((/4,nrads/),"integer")
    avgs        = new((/4,nrads/),"float")
    sigma       = new((/4,nrads/),"float")
    obs_density = new((/4,nrads/),"float")
@@ -105,7 +105,7 @@ elseif(opt.eq."quadrant")then
          avgs(i,j)  = avg(vals(indices))
          sigma(i,j) = stddev(vals(indices))
          A_bin = 0.25*pi*(outerrad^2-innerrad^2) ;Mult. by 0.25 since this is a quadrant
-         obs_density(i,j) = nobs(i,j)/A_bin
+         obs_density(i,j) = tofloat(nobs(i,j))/A_bin
       end do
    end do
 
@@ -117,21 +117,23 @@ elseif(opt.eq."quadrant")then
 
    A_total = pi*outerrad^2
    obs_total = sum(nobs)
-   obs_density_domain = obs_total/A_total
+   obs_density_domain = tofloat(obs_total)/A_total
    avgs!0 = "azimuth"
    avgs!1 = "radius"
    avgs&azimuth = (/45,135,225,315/)
    avgs&radius  = radout 
    avgs@standard_deviation = sigma
-   avgs@num_obs = nobs
    avgs@obs_density = obs_density
    avgs@obs_density_domain = obs_density_domain
+   avgs@long_name = "Azimuthal average of all wind observations in each quadrant"
    avgs@comment = "obs_density = number of obs per square km in each radial bin"
    avgs@comment2 = "obs_density_domain = # of obs per square km in whole domain"
    avgs@comment3 = "Averages are valid at the midpoint of each radial and azimuthal bin"
    avgs@comment4 = "For azimuths, 0 deg is North, 90 deg is East, etc."
    avgs@comment5 = "interpolation performed across gaps in wind profiles smaller than "+interpgap
-   return(avgs)
+   copy_VarCoords(avgs,nobs)
+   nobs@long_name = "Number of observations from all platforms"
+   return([/avgs,nobs/])
 end if   ;opt
 
 end

@@ -26,9 +26,6 @@ type = 0  ;0 = Azimuthal average using radial bins of width defined below
           ;3 = Morris and Ruf 3-parameter model (haven't been able to get this to converge!)
 dr = 5   ;If type=0, width of radial bins
 uncert_limit = 3.5   ;Filter out all obs with uncertainty greater than this (m/s)
-wind_rad_compare_limit = 20  ;Filter out all obs that depart from the wind speed defined by
-                             ;the best-track wind radii by more than +/- 20 m/s.
-                             ;(See filter_cygnss.ncl for details.)
 opt = "quadrant"  ;Valid options: "full" or "quadrant". "quadrant" will compute IKE in each
                   ;storm quadrant independently and sum the quadrant-IKE values. "full" will
                   ;azimuthally average across full circles and compute IKE using those avgs.
@@ -46,6 +43,7 @@ dirtest = systemfunc("test -d "+outdir+"; echo $?")
 if(dirtest.eq.1)then
    system("mkdir "+outdir)
    system("mkdir "+outdir+"/ascii/")
+   system("mkdir "+outdir+"/netcdf/")
    system("mkdir "+outdir+"/maps/")
    system("mkdir "+outdir+"/maps/"+searchtype)
    system("mkdir "+outdir+"/ike-windprofiles+maps_montage/")
@@ -76,14 +74,15 @@ stormtime1min@units = timeunits
 ; TIME FOR WHICH WE WANT TO ESTIMATE IKE  ;
 ;-----------------------------------------;
 btinput_string = systemfunc("cat "+trakfile)
+stormids = systemfunc("awk '{print $1}' "+trakfile)
 btinput = stringtochar(btinput_string)
 nlines = toint(systemfunc("wc "+trakfile)) 
 r34int = new(4,"integer")
 r50int = new(4,"integer")
 r64int = new(4,"integer")
-prevascfile = " "   ;Initialize variable used later to check if this is a new storm
 prevstormid = " "   ;Initialize variable used later to check if this is a new storm
-do i=0,nlines-1
+prevstormname = " "
+do i=27,nlines-1
    print( "###################################################################")
    print( "PROCESSING BEST-TRACK LINE "+i+" OF "+nlines+" "+systemfunc("date"))
    print( "###################################################################")
@@ -114,28 +113,90 @@ do i=0,nlines-1
    r50@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
    r64@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
    print( stormname+" "+MM+"/"+DD+"/"+YYYY+" "+HH+":"+mm)
-
-   ;Check if we have a new storm. If we do, perform a few operations.
-   if(stormid.ne.stormidprev)then
-      ;Set up ASCII files for new storm
-      ascfileinit = outdir+"/ascii/"+stormid+"-"+stormname+"-ike-"+searchtype+"-"+dthr+"h"+"-"+radius+"km-init.txt"
-      ascfileall  = outdir+"/ascii/"+stormid+"-"+stormname+"-ike-"+searchtype+"-"+dthr+"h"+"-"+radius+"km-all.txt"
-      headerstring1 = "34-kt IKE [TJ] computed using SFMR and CYGNSS data supplemented by best-track wind radii"
-      headerstring2 = "------------------------------------------- ----- ------- ------ ----- -----------"
-      headerstring3 = "YYYY MM DD HH mm ss ikeNE ikeSE ikeSW ikeNW nSFMR nCYGNSS nASCAT nSMAP obs density"
-      headerstring4 = "---- -- -- -- -- -- ----- ----- ----- ----- ----- ------- ------ ----- -----------"
-      system("echo "+headerstring1+" > "+ascfileall)
-      system("echo "+headerstring2+" >> "+ascfileall)
-      system("echo "+headerstring3+" >> "+ascfileall)
-      system("echo "+headerstring4+" >> "+ascfileall)
-      headerstring1 = "34-kt IKE [TJ] computed using only best-track wind radii"
-      system("echo "+headerstring1+" > "+ascfileinit)
-      system("echo "+headerstring2+" >> "+ascfileinit)
-      system("echo "+headerstring3+" >> "+ascfileinit)
-      system("echo "+headerstring4+" >> "+ascfileinit)
- 
-      ;Print wind profile arrays to NetCDF files.     
-
+   ;Check if we have a new storm. If we do, perform some operations.
+   if(stormid.ne.prevstormid)then
+      nelem = dimsizes(ind(stormids.eq.stormid))
+      nrads = radius/dr
+      ;If this is *not* the first storm, print arrays to NetCDF files.
+      if(prevstormid.ne." ")then
+         ;Write to netCDF file.
+         ncfile = outdir+"netcdf/"+prevstormname+"-"+prevstormid+"-"+searchtype+"-"+\
+                  dthr+"hr-"+radius+"km-interpgap-"+interpgap+"km.nc"
+         print( "NEW STORM!! WRITING TO netCDF FILE "+ncfile)
+         ;Define some output variable attributes
+         nSFMR@long_name = "Number of SFMR observations in the dataset"
+         nASCAT@long_name = "Number of ASCAT observations in the dataset"
+         nCYGNSS@long_name = "Number of CYGNSS observations in the dataset"
+         nSMAP@long_name = "Number of SMAP observations in the dataset"
+         ike_total@long_name = "Total IKE computed using observations, where available"
+         ike_init_total@long_name = "Total IKE computed using only the best-track wind profile"
+         nobs@long_name = "Total number of observations in the dataset"
+         vavg@long_name = "Average wind speed computed using observations"
+         ike_total@units = "Joules"
+         ike_init_total@units = "Joules"
+         vavg@units = "m/s"
+         ;Open file
+         fout = addfile(ncfile,"c")
+         ;Define global attributes.
+         fileatts = True
+         fileatts@stormid = stormid
+         fileatts@stormname = stormname
+         fileatts@searchrad = radius+" km"
+         fileatts@searchperiod = dthr+" h"
+         fileatts@searchtyoe = searchtype
+         fileatts@binwidth = dr+" km"
+         fileatts@interpgap = interpgap+" km"
+         fileattdef(fout,fileatts)
+         ;Define variable attributes.
+         dimNames1D = (/"times"/)
+         dimNames2D = (/"quadrants","times"/)
+         dimNames3D = (/"quadrants","radii","times"/)
+         dimSizes = (/4,nrads,nelem/)
+         dimUnlim = (/False,False,False/)
+         filedimdef(fout,dimNames3D,dimSizes,dimUnlim)
+         ;Define variables.
+         var_names1D = (/"nSFMR","nASCAT","nCYGNSS","nSMAP","ike_total","ike_init_total"/)
+         var_names2D = (/"ike","ike_init"/)
+         var_names3D = (/"nobs","vavg"/)
+         var_types1D = (/"integer","integer","integer","integer","float","float"/)
+         var_types2D = (/"float","float"/)
+         var_types3D = (/"integer","float"/)
+         filevardef(fout,var_names1D,var_types1D,dimNames1D)
+         filevardef(fout,var_names2D,var_types2D,dimNames2D)
+         filevardef(fout,var_names3D,var_types3D,dimNames3D)
+         filevarattdef(fout,"nSFMR",nSFMR)
+         filevarattdef(fout,"nASCAT",nASCAT)
+         filevarattdef(fout,"nCYGNSS",nCYGNSS)
+         filevarattdef(fout,"nSMAP",nSMAP)
+         filevarattdef(fout,"ike_total",ike_total)
+         filevarattdef(fout,"ike_init_total",ike_init_total)
+         filevarattdef(fout,"ike",ike)
+         filevarattdef(fout,"ike_init",ike_init)
+         filevarattdef(fout,"nobs",nobs)
+         filevarattdef(fout,"vavg",vavg)
+         ;Write variables.
+         fout->nSFMR          = (/nSFMR/)
+         fout->nASCAT         = (/nASCAT/)
+         fout->nCYGNSS        = (/nCYGNSS/)
+         fout->nSMAP          = (/nSMAP/)
+         fout->ike_total      = (/ike_total/)
+         fout->ike_init_total = (/ike_init_total/)
+         fout->ike            = (/ike/)
+         fout->ike_init       = (/ike_init/)
+         fout->nobs           = (/nobs/)
+         fout->vavg           = (/vavg/)
+      end if
+      ;Set up arrays for the new storm.
+      nSFMR     := new(nelem,"integer")
+      nCYGNSS   := new(nelem,"integer")
+      nASCAT    := new(nelem,"integer")
+      nSMAP     := new(nelem,"integer")
+      ike_total := new(nelem,"float")
+      ike_init_total := new(nelem,"float")
+      ike       := new((/4,nelem/),"float")
+      ike_init  := new((/4,nelem/),"float")
+      nobs      := new((/4,nrads,nelem/),"integer")
+      vavg      := new((/4,nrads,nelem/),"float")
    end if
 
    ;Call function to create initial guess wind profile based on best-track wind radii.
@@ -149,17 +210,17 @@ do i=0,nlines-1
    end if
 
    ;Call function to read in ASCAT data and filter it based on the user-defined criteria
-;   ascdata := read_ascat(YYYY,MM,DD,HH,mm,ss,lat,lon,radius,dt,searchtype)
-ascdata = 0
+   ascdata := read_ascat(YYYY,MM,DD,HH,mm,ss,lat,lon,radius,dt,searchtype)
+
    ;Call function to read in SFMR data and filter it based on the user-defined criteria
-;   sfmrdata := read_sfmr(YYYY,MM,DD,HH,mm,ss,str_upper(stormname),lat,lon,radius,dt,searchtype)
-sfmrdata = 0
+   sfmrdata := read_sfmr(YYYY,MM,DD,HH,mm,ss,str_upper(stormname),lat,lon,radius,dt,searchtype)
+
    ;Call function to read in SMAP data and filter it based on the user-defined criteria
-;   smapdata := read_smap(YYYY,MM,DD,HH,mm,ss,lat,lon,radius,dt,searchtype)
-smapdata = 0
+   smapdata := read_smap(YYYY,MM,DD,HH,mm,ss,lat,lon,radius,dt,searchtype)
+
    ;Call function to read in the CYGNSS data and filter it based on the user-defined criteria
    cygdata := filter_cygnss(YYYY,MM,DD,HH,mm,ss,eyediam,rmw,r34,r50,r64,radius,lat,lon,dt,searchtype,\
-              uncert_limit,wind_rad_compare_limit)
+              uncert_limit)
 
    ;If there is a list of arrays for any variable, extract them and call mapping functions.
    ;Otherise, set the variable to a missing value.
@@ -174,7 +235,7 @@ smapdata = 0
          sfmrlat := sfmrdata[1]
          sfmrlon := sfmrdata[2]
          sfmrtime:= sfmrdata[3]
-         nSFMR = dimsizes(.not.ismissing(sfmrv))
+         nSFMR(i) = dimsizes(.not.ismissing(sfmrv))
       else
          sfmrv   := -9999. 
          sfmrlat := -9999. 
@@ -184,14 +245,14 @@ smapdata = 0
          sfmrlat@_FillValue  = -9999
          sfmrlon@_FillValue  = -9999
          sfmrtime@_FillValue = -9999
-         nSFMR    = 0
+         nSFMR(i)    = 0
       end if 
       if(typeof(cygdata).eq."list")then
          cygv   := cygdata[2]
          cyglat := cygdata[6]
          cyglon := cygdata[7]
          cygtime:= cygdata[8]
-         nCYGNSS = dimsizes(.not.ismissing(cygv))
+         nCYGNSS(i) = dimsizes(.not.ismissing(cygv))
       else
          cygv   := -9999. 
          cyglat := -9999. 
@@ -201,14 +262,14 @@ smapdata = 0
          cyglat@_FillValue  = -9999
          cyglon@_FillValue  = -9999
          cygtime@_FillValue = -9999
-         nCYGNSS = 0
+         nCYGNSS(i) = 0
       end if
       if(typeof(ascdata).eq."list")then
          ascv   := ascdata[0]
          asclat := ascdata[1]
          asclon := ascdata[2]
          asctime:= ascdata[3]
-         nASCAT  = dimsizes(.not.ismissing(ascv))
+         nASCAT(i)  = dimsizes(.not.ismissing(ascv))
       else
          ascv   := -9999. 
          asclat := -9999. 
@@ -218,14 +279,14 @@ smapdata = 0
          asclat@_FillValue  = -9999
          asclon@_FillValue  = -9999
          asctime@_FillValue = -9999
-         nASCAT  = 0
+         nASCAT(i)  = 0
       end if
       if(typeof(smapdata).eq."list")then
          smapv   := smapdata[0]
          smaplat := smapdata[1]
          smaplon := smapdata[2]
          smaptime:= smapdata[3]
-         nSMAP  = dimsizes(.not.ismissing(smapv))
+         nSMAP(i)  = dimsizes(.not.ismissing(smapv))
       else
          smapv   := -9999. 
          smaplat := -9999. 
@@ -235,7 +296,7 @@ smapdata = 0
          smaplat@_FillValue  = -9999
          smaplon@_FillValue  = -9999
          smaptime@_FillValue = -9999
-         nSMAP  = 0
+         nSMAP(i)  = 0
       end if
 
       ;Concatenate all data into single arrays.
@@ -266,7 +327,9 @@ smapdata = 0
       ;Call function to compute azimuthal average of observations, yielding radial
       ;wind profiles, interpolating across gaps smaller than interpgap.
       print( "Computing azimuthal average of observations...")
-      vavg := azimuthal_avg(lat,lon,latcat,loncat,vcat,radius,dr,opt,interpgap)
+      aziavg := azimuthal_avg(lat,lon,latcat,loncat,vcat,radius,dr,opt,interpgap)
+      vavg(:,:,i) = aziavg[0]
+      nobs(:,:,i) = aziavg[1]
       obs_density = vavg@obs_density_domain
 
       ;Check if the observation density meets the set cutoff value.
@@ -284,89 +347,76 @@ smapdata = 0
                smaplon,dt,searchtype,outdir)
 
       ;Fill missing values of vavg array using values from init array.
-      vavg_nonfilled = vavg
-      vavg = where(ismissing(vavg),init,vavg)
+      vavg_nonfilled = vavg(:,:,i)
+      vavg(:,:,i) = where(ismissing(vavg(:,:,i)),init,vavg(:,:,i))
 
       ;Only compute IKE for mean winds greater than 34 kt
       print( "Computing IKE...")
-      vavggt34kt := where(vavg.lt.17.4911,vavg@_FillValue,vavg)
+      vavggt34kt := where(vavg(:,:,i).lt.17.4911,vavg@_FillValue,vavg(:,:,i))
       initgt34kt := where(init.lt.17.4911,init@_FillValue,init)
       if(all(ismissing(vavggt34kt)))then
          print( "No radial bin has an average wind greater than 34 kt. Can't compute IKE.")
          continue
       end if
       ;Compute IKE for both azimuthally averaged observations and for init wind profile
-      vdimsizes := dimsizes(vavg)
+      vdimsizes = dimsizes(vavg)
       if(dimsizes(vdimsizes).eq.1)then  ;Rank is 1 --> Average was computed around full circle
-         ike = calc_ike(vavggt34kt,vavg&radius,opt)
-         ike_init = calc_ike(initgt34kt,vavg&radius,opt)  ;IKE of initial wind profile
-         ikeTJ = decimalPlaces(ike/1e12,3,True)
-         ikeTJ_init = decimalPlaces(ike_init/1e12,3,True)
-         ike_total = ikeTJ
-         ike_total_init = ikeTJ_init
+         ike(i) = calc_ike(vavggt34kt,vavg&radius,opt)
+         ike_init(i) = calc_ike(initgt34kt,vavg&radius,opt)  ;IKE of initial wind profile
+         ikeTJ(i) = decimalPlaces(ike(i)/1e12,3,True)
+         ikeTJ_init(i) = decimalPlaces(ike_init/1e12,3,True)
+         ike_total(i) = ikeTJ
+         ike_total_init(i) = ikeTJ_init
       else  ;Rank is 2 --> Average was computed quadrant-by-quadrant. Compute ike in each quadrant.
-         ike = new(vdimsizes(0),"float")
-         ike_init = new(vdimsizes(0),"float")
-         do j=0,vdimsizes(0)-1
-            ike(j) = calc_ike(vavggt34kt(j,:),vavg&radius,opt)
-            ike_init(j) = calc_ike(initgt34kt(j,:),vavg&radius,opt)
+         do j=0,3
+            ike(j,i) = calc_ike(vavggt34kt(j,:),vavg&radius,opt)
+            ike_init(j,i) = calc_ike(initgt34kt(j,:),vavg&radius,opt)
          end do
-         ikeTJ = decimalPlaces(ike/1e12,3,True)
-         ikeTJ_init = decimalPlaces(ike_init/1e12,3,True)
+         ikeTJ = decimalPlaces(ike(:,i)/1e12,3,True)
+         ikeTJ_init = decimalPlaces(ike_init(:,i)/1e12,3,True)
          ikeTJ = where(ikeTJ.eq.-9999,ikeTJ@_FillValue,ikeTJ)
          ikeTJ_init = where(ikeTJ_init.eq.-9999,ikeTJ_init@_FillValue,ikeTJ_init)
-         ike_total = sum(ikeTJ)
-         ike_init_total = sum(ikeTJ_init)
+         ike_total(i) = sum(ikeTJ)
+         ike_init_total(i) = sum(ikeTJ_init)
       end if
-
-      ;Print current estimates of IKE into ascii files
-      ikeTJ@_FillValue = -9999.
-      ikeTJ_init@_FillValue = -9999.
-      obs_density@_FillValue = 0.
-      ikestringall = sprintf("%5.2f",ikeTJ(0))+" "+sprintf("%5.2f",ikeTJ(1))+" "+sprintf("%5.2f",ikeTJ(2))+" "+sprintf("%5.2f",ikeTJ(3))
-      ikestringinit = sprintf("%5.2f",ikeTJ_init(0))+" "+sprintf("%5.2f",ikeTJ_init(1))+" "+sprintf("%5.2f",ikeTJ_init(2))+" "+sprintf("%5.2f",ikeTJ_init(3))
-      outstringall = YYYY+" "+MM+" "+DD+" "+HH+" "+mm+" "+ss+"   "+ikestringall+" "+sprinti("%0.5i",nSFMR)+" "+sprinti("%0.7i",nCYGNSS)+" "+sprinti("%0.6i",nASCAT)+" "+sprinti("%0.6i",nSMAP)+" "+sprintf("%11.10f",obs_density)
-      outstringinit = YYYY+" "+MM+" "+DD+" "+HH+" "+mm+" "+ss+"   "+ikestringinit
-      system("echo "+outstringall+" >> "+ascfileall)
-      system("echo "+outstringinit+" >> "+ascfileinit)
 
       ;Call procedure to plot wind profile and IKE
       print( "Plotting wind profiles...")
-      plot_ike(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,dt,type,dr,vavg,vavg_nonfilled,ikeTJ,vcat,opt,init,outdir)
+      plot_ike(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,dt,type,dr,vavg(:,:,i),vavg_nonfilled,ikeTJ,vcat,opt,init,outdir)
 
       ;Call procedure to montage the plots
       print( "Montaging images...")
       montage_ike(stormname,stormid,YYYY,MM,DD,HH,mm,ss,searchtype,radius,dt,opt,outdir)
 
-      ;Reset stormidprev
-      stormidprev = stormid
+      ;Reset prevstormid and prevstormname
+      prevstormid = stormid
+      prevstormname = stormname
    end if
 end do
 ;Plot time series of IKE for each storm
-print( "Plotting time series of IKE for each storm...")
-asciifiles_all = systemfunc("ls "+outdir+"/ascii/*"+searchtype+"-"+dthr+"h-"+radius+"km-all.txt")
-asciifiles_init = systemfunc("ls "+outdir+"/ascii/*"+searchtype+"-"+dthr+"h-"+radius+"km-init.txt")
-nfiles = dimsizes(asciifiles_all)
-do i=0,nfiles-1
-   stormid = systemfunc("echo "+asciifiles_all(i)+" | awk -F'/' '{print $NF}' | awk -F'-' '{print $1}'")
-   stormname = systemfunc("echo "+asciifiles_all(i)+" | awk -F'/' '{print $NF}' | awk -F'-' '{print $2}'")
-   alldata := readAsciiTable(asciifiles_all(i),15,"float",4)
-   initdata := readAsciiTable(asciifiles_init(i),10,"float",4)
-   alldata@_FillValue = -9999
-   initdata@_FillValue = -9999
-   YYYY  := alldata(:,0)
-   MM    := alldata(:,1)
-   DD    := alldata(:,2)
-   HH    := alldata(:,3)
-   mm    := alldata(:,4)
-   ss    := alldata(:,5)
-   ike_all := alldata(:,6:9)
-   ike_init := initdata(:,6:9)
-   nsfmr   := alldata(:,10)
-   ncygnss := alldata(:,11)
-   nascat := alldata(:,12)
-   nsmap := alldata(:,13)
-   obs_density := alldata(:,14)
-   plot_ike_timeseries(stormname,stormid,YYYY,MM,DD,HH,mm,ss,opt,searchtype,radius,dthr,ike_all,ike_init,nsfmr,ncygnss,nsmap,obs_density,outdir)
-end do
-system("sed -i 's/-9999\.00/-9999/g' "+outdir+"/ascii/*txt")
+;print( "Plotting time series of IKE for each storm...")
+;asciifiles_all = systemfunc("ls "+outdir+"/ascii/*"+searchtype+"-"+dthr+"h-"+radius+"km-all.txt")
+;asciifiles_init = systemfunc("ls "+outdir+"/ascii/*"+searchtype+"-"+dthr+"h-"+radius+"km-init.txt")
+;nfiles = dimsizes(asciifiles_all)
+;do i=0,nfiles-1
+;   stormid = systemfunc("echo "+asciifiles_all(i)+" | awk -F'/' '{print $NF}' | awk -F'-' '{print $1}'")
+;   stormname = systemfunc("echo "+asciifiles_all(i)+" | awk -F'/' '{print $NF}' | awk -F'-' '{print $2}'")
+;   alldata := readAsciiTable(asciifiles_all(i),15,"float",4)
+;   initdata := readAsciiTable(asciifiles_init(i),10,"float",4)
+;   alldata@_FillValue = -9999
+;   initdata@_FillValue = -9999
+;   YYYY  := alldata(:,0)
+;   MM    := alldata(:,1)
+;   DD    := alldata(:,2)
+;   HH    := alldata(:,3)
+;   mm    := alldata(:,4)
+;   ss    := alldata(:,5)
+;   ike_all := alldata(:,6:9)
+;   ike_init := initdata(:,6:9)
+;   nsfmr   := alldata(:,10)
+;   ncygnss := alldata(:,11)
+;   nascat := alldata(:,12)
+;   nsmap := alldata(:,13)
+;   obs_density := alldata(:,14)
+;   plot_ike_timeseries(stormname,stormid,YYYY,MM,DD,HH,mm,ss,opt,searchtype,radius,dthr,ike_all,ike_init,nsfmr,ncygnss,nsmap,obs_density,outdir)
+;end do
