@@ -11,6 +11,7 @@ load "/raid1/pduran/jm13/ncl/cygnss/ike.ncl"
 load "/raid1/pduran/jm13/ncl/cygnss/plot_ike.ncl"
 load "/raid1/pduran/jm13/ncl/cygnss/montage_ike.ncl"
 load "/raid1/pduran/jm13/ncl/cygnss/plot_ike_timeseries.ncl"
+load "/raid1/pduran/jm13/ncl/cygnss/post_process.ncl"
 
 bttype = 1  ;Best-track type (0=HURDAT2, 1=EBTRK)
 basin = "NATL"
@@ -82,7 +83,7 @@ r50int = new(4,"integer")
 r64int = new(4,"integer")
 prevstormid = " "   ;Initialize variable used later to check if this is a new storm
 prevstormname = " "
-do i=27,nlines-1
+do i=0,nlines-1
    print( "###################################################################")
    print( "PROCESSING BEST-TRACK LINE "+i+" OF "+nlines+" "+systemfunc("date"))
    print( "###################################################################")
@@ -113,6 +114,7 @@ do i=27,nlines-1
    r50@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
    r64@comment = "Indexes from 0 to 3 correspond to NE, SE, SW, NW quadrants, respectively."
    print( stormname+" "+MM+"/"+DD+"/"+YYYY+" "+HH+":"+mm)
+
    ;Check if we have a new storm. If we do, perform some operations.
    if(stormid.ne.prevstormid)then
       nelem = dimsizes(ind(stormids.eq.stormid))
@@ -128,22 +130,29 @@ do i=27,nlines-1
          nASCAT@long_name = "Number of ASCAT observations in the dataset"
          nCYGNSS@long_name = "Number of CYGNSS observations in the dataset"
          nSMAP@long_name = "Number of SMAP observations in the dataset"
+         ike@long_name = "IKE in each quadrant computed using observations"
          ike_total@long_name = "Total IKE computed using observations, where available"
+         ike_init@long_name = "IKE in each quadrant computed using only the best-track wind profile"
          ike_init_total@long_name = "Total IKE computed using only the best-track wind profile"
          nobs@long_name = "Total number of observations in the dataset"
          vavg@long_name = "Average wind speed computed using observations"
-         ike_total@units = "Joules"
-         ike_init_total@units = "Joules"
+         ike@units = "Joules"
+         ike_total@units = "TeraJoules"
+         ike_init@units = "Joules"
+         ike_init_total@units = "TeraJoules"
          vavg@units = "m/s"
          ;Open file
+         if(fileexists(ncfile))then
+            system("\rm "+ncfile)
+         end if
          fout = addfile(ncfile,"c")
          ;Define global attributes.
          fileatts = True
-         fileatts@stormid = stormid
-         fileatts@stormname = stormname
+         fileatts@stormid = prevstormid
+         fileatts@stormname = prevstormname
          fileatts@searchrad = radius+" km"
          fileatts@searchperiod = dthr+" h"
-         fileatts@searchtyoe = searchtype
+         fileatts@searchtype = searchtype
          fileatts@binwidth = dr+" km"
          fileatts@interpgap = interpgap+" km"
          fileattdef(fout,fileatts)
@@ -151,19 +160,20 @@ do i=27,nlines-1
          dimNames1D = (/"times"/)
          dimNames2D = (/"quadrants","times"/)
          dimNames3D = (/"quadrants","radii","times"/)
-         dimSizes = (/4,nrads,nelem/)
+         dimSizes = (/4,prevnrads,prevnelem/)
          dimUnlim = (/False,False,False/)
          filedimdef(fout,dimNames3D,dimSizes,dimUnlim)
          ;Define variables.
-         var_names1D = (/"nSFMR","nASCAT","nCYGNSS","nSMAP","ike_total","ike_init_total"/)
+         var_names1D = (/"stormtimes","nSFMR","nASCAT","nCYGNSS","nSMAP","ike_total","ike_init_total"/)
          var_names2D = (/"ike","ike_init"/)
          var_names3D = (/"nobs","vavg"/)
-         var_types1D = (/"integer","integer","integer","integer","float","float"/)
+         var_types1D = (/"integer","integer","integer","integer","integer","float","float"/)
          var_types2D = (/"float","float"/)
          var_types3D = (/"integer","float"/)
          filevardef(fout,var_names1D,var_types1D,dimNames1D)
          filevardef(fout,var_names2D,var_types2D,dimNames2D)
          filevardef(fout,var_names3D,var_types3D,dimNames3D)
+         filevarattdef(fout,"stormtimes",stormtimes)
          filevarattdef(fout,"nSFMR",nSFMR)
          filevarattdef(fout,"nASCAT",nASCAT)
          filevarattdef(fout,"nCYGNSS",nCYGNSS)
@@ -175,6 +185,7 @@ do i=27,nlines-1
          filevarattdef(fout,"nobs",nobs)
          filevarattdef(fout,"vavg",vavg)
          ;Write variables.
+         fout->stormtimes     = (/stormtimes/)
          fout->nSFMR          = (/nSFMR/)
          fout->nASCAT         = (/nASCAT/)
          fout->nCYGNSS        = (/nCYGNSS/)
@@ -187,6 +198,8 @@ do i=27,nlines-1
          fout->vavg           = (/vavg/)
       end if
       ;Set up arrays for the new storm.
+      j = 0
+      stormtimes:= new(nelem,"integer")
       nSFMR     := new(nelem,"integer")
       nCYGNSS   := new(nelem,"integer")
       nASCAT    := new(nelem,"integer")
@@ -199,6 +212,8 @@ do i=27,nlines-1
       vavg      := new((/4,nrads,nelem/),"float")
    end if
 
+   stormtimes(j) = round(cd_inv_calendar(toint(YYYY),toint(MM),toint(DD),toint(HH),0,0,timeunits,0),3)
+
    ;Call function to create initial guess wind profile based on best-track wind radii.
    ;Proceed only if we have a best-track wind profile (sometimes we don't have all of
    ;the info we need to compute the init wind profile. For example, the initial entries
@@ -206,6 +221,11 @@ do i=27,nlines-1
    init = best_track_wind_profile(vmax,rmw,r34,r50,r64,radius,dr,0)
    if(all(ismissing(init)))then
       print( "Insufficient best track wind radii to compute initial guess wind profile...Skipping...")
+      prevstormid = stormid
+      prevstormname = stormname
+      prevnelem = nelem
+      prevnrads = nrads
+      j = j + 1
       continue   ;Go to next best track entry.
    end if
 
@@ -235,7 +255,7 @@ do i=27,nlines-1
          sfmrlat := sfmrdata[1]
          sfmrlon := sfmrdata[2]
          sfmrtime:= sfmrdata[3]
-         nSFMR(i) = dimsizes(.not.ismissing(sfmrv))
+         nSFMR(j) = dimsizes(.not.ismissing(sfmrv))
       else
          sfmrv   := -9999. 
          sfmrlat := -9999. 
@@ -245,14 +265,14 @@ do i=27,nlines-1
          sfmrlat@_FillValue  = -9999
          sfmrlon@_FillValue  = -9999
          sfmrtime@_FillValue = -9999
-         nSFMR(i)    = 0
+         nSFMR(j)    = 0
       end if 
       if(typeof(cygdata).eq."list")then
          cygv   := cygdata[2]
          cyglat := cygdata[6]
          cyglon := cygdata[7]
          cygtime:= cygdata[8]
-         nCYGNSS(i) = dimsizes(.not.ismissing(cygv))
+         nCYGNSS(j) = dimsizes(.not.ismissing(cygv))
       else
          cygv   := -9999. 
          cyglat := -9999. 
@@ -262,14 +282,14 @@ do i=27,nlines-1
          cyglat@_FillValue  = -9999
          cyglon@_FillValue  = -9999
          cygtime@_FillValue = -9999
-         nCYGNSS(i) = 0
+         nCYGNSS(j) = 0
       end if
       if(typeof(ascdata).eq."list")then
          ascv   := ascdata[0]
          asclat := ascdata[1]
          asclon := ascdata[2]
          asctime:= ascdata[3]
-         nASCAT(i)  = dimsizes(.not.ismissing(ascv))
+         nASCAT(j)  = dimsizes(.not.ismissing(ascv))
       else
          ascv   := -9999. 
          asclat := -9999. 
@@ -279,14 +299,14 @@ do i=27,nlines-1
          asclat@_FillValue  = -9999
          asclon@_FillValue  = -9999
          asctime@_FillValue = -9999
-         nASCAT(i)  = 0
+         nASCAT(j)  = 0
       end if
       if(typeof(smapdata).eq."list")then
          smapv   := smapdata[0]
          smaplat := smapdata[1]
          smaplon := smapdata[2]
          smaptime:= smapdata[3]
-         nSMAP(i)  = dimsizes(.not.ismissing(smapv))
+         nSMAP(j)  = dimsizes(.not.ismissing(smapv))
       else
          smapv   := -9999. 
          smaplat := -9999. 
@@ -296,7 +316,7 @@ do i=27,nlines-1
          smaplat@_FillValue  = -9999
          smaplon@_FillValue  = -9999
          smaptime@_FillValue = -9999
-         nSMAP(i)  = 0
+         nSMAP(j)  = 0
       end if
 
       ;Concatenate all data into single arrays.
@@ -328,16 +348,26 @@ do i=27,nlines-1
       ;wind profiles, interpolating across gaps smaller than interpgap.
       print( "Computing azimuthal average of observations...")
       aziavg := azimuthal_avg(lat,lon,latcat,loncat,vcat,radius,dr,opt,interpgap)
-      vavg(:,:,i) = aziavg[0]
-      nobs(:,:,i) = aziavg[1]
+      vavg(:,:,j) = aziavg[0]
+      nobs(:,:,j) = aziavg[1]
       obs_density = vavg@obs_density_domain
 
       ;Check if the observation density meets the set cutoff value.
       ;If not, skip the rest of the loop and go to next time.
 ;      if(ismissing(obs_density))then
+
+;         prevstormid = stormid
+;         prevstormname = stormname
+;         prevnelem = nelem
+;         prevnrads = nrads
 ;         continue
 ;      elseif(obs_density.lt.minobsdensity)then
 ;         print( "OBSERVATION DENSITY SMALLER THAN CUTOFF VALUE. NO IKE ESTIMATE CREATED.")
+;         prevstormid = stormid
+;         prevstormname = stormname
+;         prevnelem = nelem
+;         prevnrads = nrads
+;         j = j + 1
 ;         continue
 ;      end if
 
@@ -347,42 +377,47 @@ do i=27,nlines-1
                smaplon,dt,searchtype,outdir)
 
       ;Fill missing values of vavg array using values from init array.
-      vavg_nonfilled = vavg(:,:,i)
-      vavg(:,:,i) = where(ismissing(vavg(:,:,i)),init,vavg(:,:,i))
+      vavg_nonfilled = vavg(:,:,j)
+      vavg(:,:,j) = where(ismissing(vavg(:,:,j)),init,vavg(:,:,j))
 
       ;Only compute IKE for mean winds greater than 34 kt
       print( "Computing IKE...")
-      vavggt34kt := where(vavg(:,:,i).lt.17.4911,vavg@_FillValue,vavg(:,:,i))
+      vavggt34kt := where(vavg(:,:,j).lt.17.4911,vavg@_FillValue,vavg(:,:,j))
       initgt34kt := where(init.lt.17.4911,init@_FillValue,init)
       if(all(ismissing(vavggt34kt)))then
          print( "No radial bin has an average wind greater than 34 kt. Can't compute IKE.")
+         prevstormid = stormid
+         prevstormname = stormname
+         prevnelem = nelem
+         prevnrads = nrads
+         j = j + 1
          continue
       end if
       ;Compute IKE for both azimuthally averaged observations and for init wind profile
       vdimsizes = dimsizes(vavg)
       if(dimsizes(vdimsizes).eq.1)then  ;Rank is 1 --> Average was computed around full circle
-         ike(i) = calc_ike(vavggt34kt,vavg&radius,opt)
-         ike_init(i) = calc_ike(initgt34kt,vavg&radius,opt)  ;IKE of initial wind profile
-         ikeTJ(i) = decimalPlaces(ike(i)/1e12,3,True)
-         ikeTJ_init(i) = decimalPlaces(ike_init/1e12,3,True)
-         ike_total(i) = ikeTJ
-         ike_total_init(i) = ikeTJ_init
+         ike(j) = calc_ike(vavggt34kt,vavg&radius,opt)
+         ike_init(j) = calc_ike(initgt34kt,vavg&radius,opt)  ;IKE of initial wind profile
+         ikeTJ(j) = decimalPlaces(ike(j)/1e12,3,True)
+         ikeTJ_init(j) = decimalPlaces(ike_init/1e12,3,True)
+         ike_total(j) = ikeTJ
+         ike_total_init(j) = ikeTJ_init
       else  ;Rank is 2 --> Average was computed quadrant-by-quadrant. Compute ike in each quadrant.
-         do j=0,3
-            ike(j,i) = calc_ike(vavggt34kt(j,:),vavg&radius,opt)
-            ike_init(j,i) = calc_ike(initgt34kt(j,:),vavg&radius,opt)
+         do k=0,3
+            ike(k,j) = calc_ike(vavggt34kt(k,:),vavg&radius,opt)
+            ike_init(k,j) = calc_ike(initgt34kt(k,:),vavg&radius,opt)
          end do
-         ikeTJ = decimalPlaces(ike(:,i)/1e12,3,True)
-         ikeTJ_init = decimalPlaces(ike_init(:,i)/1e12,3,True)
+         ikeTJ = decimalPlaces(ike(:,j)/1e12,3,True)
+         ikeTJ_init = decimalPlaces(ike_init(:,j)/1e12,3,True)
          ikeTJ = where(ikeTJ.eq.-9999,ikeTJ@_FillValue,ikeTJ)
          ikeTJ_init = where(ikeTJ_init.eq.-9999,ikeTJ_init@_FillValue,ikeTJ_init)
-         ike_total(i) = sum(ikeTJ)
-         ike_init_total(i) = sum(ikeTJ_init)
+         ike_total(j) = sum(ikeTJ)
+         ike_init_total(j) = sum(ikeTJ_init)
       end if
 
       ;Call procedure to plot wind profile and IKE
       print( "Plotting wind profiles...")
-      plot_ike(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,dt,type,dr,vavg(:,:,i),vavg_nonfilled,ikeTJ,vcat,opt,init,outdir)
+      plot_ike(stormname,stormid,YYYY,MM,DD,HH,mm,ss,vmax,rmw,radius,dt,type,dr,vavg(:,:,j),vavg_nonfilled,ikeTJ,vcat,opt,init,outdir)
 
       ;Call procedure to montage the plots
       print( "Montaging images...")
@@ -391,8 +426,20 @@ do i=27,nlines-1
       ;Reset prevstormid and prevstormname
       prevstormid = stormid
       prevstormname = stormname
-   end if
+      prevnelem = nelem
+      prevnrads = nrads
+      j = j + 1
+   else  ;None of the instrument platforms have obs. Still need to iterate j.
+      j = j + 1
+   end if   ;if(any(obsarraytypes.eq."list"))
 end do
+;Call post-processing script to find times when there are not
+;enough observations, and change IKE estimate to a recent
+;(or future) estimate that was computed using enough observations.
+ncdir = "/raid1/pduran/jm13/web/cygnss/ike/all-interp-across-25km/netcdf/"
+maxmiss = 10
+post_process(ncdir,maxmiss)
+
 ;Plot time series of IKE for each storm
 ;print( "Plotting time series of IKE for each storm...")
 ;asciifiles_all = systemfunc("ls "+outdir+"/ascii/*"+searchtype+"-"+dthr+"h-"+radius+"km-all.txt")

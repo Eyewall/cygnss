@@ -122,18 +122,15 @@ elseif(opt.eq."quadrant")then
    avgs!1 = "radius"
    avgs&azimuth = (/45,135,225,315/)
    avgs&radius  = radout 
-   avgs@standard_deviation = sigma
-   avgs@obs_density = obs_density
    avgs@obs_density_domain = obs_density_domain
    avgs@long_name = "Azimuthal average of all wind observations in each quadrant"
-   avgs@comment = "obs_density = number of obs per square km in each radial bin"
-   avgs@comment2 = "obs_density_domain = # of obs per square km in whole domain"
-   avgs@comment3 = "Averages are valid at the midpoint of each radial and azimuthal bin"
-   avgs@comment4 = "For azimuths, 0 deg is North, 90 deg is East, etc."
-   avgs@comment5 = "interpolation performed across gaps in wind profiles smaller than "+interpgap
+   avgs@comment  = "obs_density_domain = # of obs per square km in whole domain"
+   avgs@comment2 = "Averages are valid at the midpoint of each radial and azimuthal bin"
+   avgs@comment3 = "For azimuths, 0 deg is North, 90 deg is East, etc."
+   avgs@comment4 = "interpolation performed across gaps in wind profiles smaller than "+interpgap
    copy_VarCoords(avgs,nobs)
    nobs@long_name = "Number of observations from all platforms"
-   return([/avgs,nobs/])
+   return([/avgs,nobs,obs_density,sigma/])
 end if   ;opt
 
 end
